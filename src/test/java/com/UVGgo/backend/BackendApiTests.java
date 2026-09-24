@@ -49,6 +49,91 @@ class BackendApiTests {
                 .andReturn().getResponse().getContentAsString());
     }
 
+    private String datosPersonalizacion(Integer usuarioId, String... articulos) {
+        return """
+                {%s"name":"Mi kit de Química","description":"Kit ajustado","course":"Química","price":120,
+                 "articulos":[%s]}
+                """.formatted(usuarioId == null ? "" : "\"usuarioId\":" + usuarioId + ",", String.join(",", articulos));
+    }
+
+    private org.springframework.test.web.servlet.ResultActions personalizar(int kitId, String body) throws Exception {
+        String conKitId = "{\"kitId\":" + kitId + "," + body.strip().substring(1);
+        return mvc.perform(put("/kits").contentType(MediaType.APPLICATION_JSON).content(conKitId));
+    }
+
+    @Test
+    @Transactional
+    void personalizaConDatosYArticulosEnviadosYListaPorUsuario() throws Exception {
+        JsonNode base = crearKitConArticulo();
+        int baseId = base.get("kitId").asInt();
+        entityManager.flush();
+        entityManager.clear();
+
+        personalizar(baseId, datosPersonalizacion(7, datosArticulo("Bata talla M", "1"), datosArticulo("Guantes", "2")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.kitBaseId").value(baseId))
+                .andExpect(jsonPath("$.usuarioId").value(7))
+                .andExpect(jsonPath("$.estado").value("PERSONALIZADO"))
+                .andExpect(jsonPath("$.name").value("Mi kit de Química"))
+                .andExpect(jsonPath("$.price").value(120))
+                .andExpect(jsonPath("$.articulos.length()").value(2))
+                .andExpect(jsonPath("$.articulos[0].nombre").value("Bata talla M"))
+                .andExpect(jsonPath("$.articulos[1].cantidad").value(2));
+        personalizar(baseId, datosPersonalizacion(8, datosArticulo("Bata", "1")))
+                .andExpect(status().isCreated());
+        entityManager.flush();
+        entityManager.clear();
+
+        mvc.perform(get("/kits/personalizados").param("usuarioId", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("Mi kit de Química"))
+                .andExpect(jsonPath("$[0].usuarioId").value(7));
+        mvc.perform(get("/kits/personalizados").param("usuarioId", "999"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+        mvc.perform(get("/kits/" + baseId))
+                .andExpect(jsonPath("$.name").value("Kit base de prueba"))
+                .andExpect(jsonPath("$.articulos.length()").value(1))
+                .andExpect(jsonPath("$.articulos[0].nombre").value("Bata"));
+    }
+
+    @Test
+    @Transactional
+    void personalizaSinUsuarioYListaTodosLosPersonalizados() throws Exception {
+        int baseId = crearKitConArticulo().get("kitId").asInt();
+        entityManager.flush();
+        entityManager.clear();
+        personalizar(baseId, datosPersonalizacion(null, datosArticulo("Bata", "1")))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.kitBaseId").value(baseId))
+                .andExpect(jsonPath("$.estado").value("PERSONALIZADO"))
+                .andExpect(jsonPath("$.usuarioId").doesNotExist());
+        entityManager.flush();
+        entityManager.clear();
+        mvc.perform(get("/kits/personalizados"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].name").value("Mi kit de Química"))
+                .andExpect(jsonPath("$[0].estado").value("PERSONALIZADO"));
+    }
+
+    @Test
+    @Transactional
+    void personalizarValidaDatos() throws Exception {
+        int baseId = crearKitConArticulo().get("kitId").asInt();
+        personalizar(baseId, datosPersonalizacion(0, datosArticulo("Bata", "1"))).andExpect(status().isBadRequest());
+        mvc.perform(put("/kits").contentType(MediaType.APPLICATION_JSON).content(datosPersonalizacion(null, datosArticulo("Bata", "1"))))
+                .andExpect(status().isBadRequest());
+        personalizar(baseId, datosPersonalizacion(7, datosArticulo("Bata", "0"))).andExpect(status().isBadRequest());
+        personalizar(baseId, "{\"usuarioId\":7,\"course\":\"Química\",\"price\":10}").andExpect(status().isBadRequest());
+        mvc.perform(post("/kits").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"usuarioId\":7,\"name\":\"Kit\",\"course\":\"Curso\",\"price\":10}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.usuarioId").doesNotExist())
+                .andExpect(jsonPath("$.estado").value("BASE"));
+    }
+
     @Test
     @Transactional
     void personalizaYAdministraArticulosSinModificarElKitBase() throws Exception {
@@ -58,7 +143,7 @@ class BackendApiTests {
         entityManager.flush();
         entityManager.clear();
 
-        JsonNode copia = json.readTree(mvc.perform(post("/kits/" + baseId + "/personalizar"))
+        JsonNode copia = json.readTree(personalizar(baseId, datosPersonalizacion(7, datosArticulo("Bata", "1")))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.kitBaseId").value(baseId))
                 .andExpect(jsonPath("$.estado").value("PERSONALIZADO"))
@@ -97,7 +182,7 @@ class BackendApiTests {
                 .andExpect(jsonPath("$.articulos.length()").value(1))
                 .andExpect(jsonPath("$.articulos[0].id").value(articuloBaseId))
                 .andExpect(jsonPath("$.articulos[0].nombre").value("Bata"));
-        mvc.perform(post("/kits/" + copiaId + "/personalizar"))
+        personalizar(copiaId, datosPersonalizacion(7, datosArticulo("Bata", "1")))
                 .andExpect(status().isConflict());
     }
 
@@ -118,7 +203,7 @@ class BackendApiTests {
                 .content(datosArticulo("Cambio", "1"))).andExpect(status().isNotFound());
         mvc.perform(delete(ruta + "/" + ajeno)).andExpect(status().isNotFound());
         mvc.perform(get("/kits/2147483647/articulos")).andExpect(status().isNotFound());
-        mvc.perform(post("/kits/2147483647/personalizar")).andExpect(status().isNotFound());
+        personalizar(2147483647, datosPersonalizacion(7, datosArticulo("Bata", "1"))).andExpect(status().isNotFound());
         mvc.perform(post("/kits/2147483647/articulos").contentType(MediaType.APPLICATION_JSON)
                 .content(datosArticulo("Bata", "1"))).andExpect(status().isNotFound());
     }

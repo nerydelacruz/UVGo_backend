@@ -1,5 +1,6 @@
 package com.UVGgo.backend.persistence;
 
+import com.UVGgo.backend.domain.EstadoKit;
 import com.UVGgo.backend.domain.Kit;
 import com.UVGgo.backend.domain.repository.KitRepository;
 import com.UVGgo.backend.persistence.crud.KitCrudRepository;
@@ -61,5 +62,17 @@ public class KitEntityRepository implements KitRepository {
     @Transactional(readOnly = true)
     public boolean tienePersonalizaciones(int kitId) {
         return kitCrudRepository.existsByKitBaseId(kitId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Kit> getPersonalizados() {
+        return mapper.toKits(kitCrudRepository.findByEstadoPersonalizacionOrderByNombreAsc(EstadoKit.PERSONALIZADO));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Kit> getPersonalizadosPorUsuario(int usuarioId) {
+        return mapper.toKits(kitCrudRepository.findByUsuarioIdOrderByNombreAsc(usuarioId));
     }
 }

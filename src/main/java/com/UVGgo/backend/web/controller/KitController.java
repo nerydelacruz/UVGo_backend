@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.PathVariable;
 
@@ -50,9 +51,15 @@ public class KitController {
         kitService.eliminar(kitId);
     }
 
-    @PostMapping("/{kitId}/personalizar")
+    // El kitId del body es el kit base que se va a personalizar.
+    @PutMapping
     @ResponseStatus(HttpStatus.CREATED)
-    public Kit personalizarKit(@PathVariable int kitId) {
-        return kitService.personalizarKit(kitId);
+    public Kit personalizarKit(@Valid @RequestBody Kit kit) {
+        return kitService.personalizarKit(kit);
+    }
+
+    @GetMapping("/personalizados")
+    public List<Kit> listarPersonalizados(@RequestParam(required = false) Integer usuarioId) {
+        return kitService.listarPersonalizados(usuarioId);
     }
 }

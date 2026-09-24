@@ -12,4 +12,6 @@ public interface KitRepository {
     Kit actualizar(Kit kit);
     void eliminar(int kitId);
     boolean tienePersonalizaciones(int kitId);
+    List<Kit> getPersonalizados();
+    List<Kit> getPersonalizadosPorUsuario(int usuarioId);
 }

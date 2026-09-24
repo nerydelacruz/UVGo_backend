@@ -23,6 +23,10 @@ public class KitService {
     }
 
     public Kit agregar(Kit kit) {
+        // Un kit creado directamente siempre es base; las copias salen de personalizarKit.
+        kit.setUsuarioId(null);
+        kit.setKitBaseId(null);
+        kit.setEstado(EstadoKit.BASE);
         return kitRepository.agregar(kit);
     }
 
@@ -52,14 +56,34 @@ public class KitService {
     }
 
     @Transactional
-    public Kit personalizarKit(int kitId) {
-        Kit base = consultar(kitId);
+    public Kit personalizarKit(Kit datos) {
+        if (datos.getKitId() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Indique el kitId del kit base a personalizar");
+        }
+        Kit base = consultar(datos.getKitId());
         if (base.getKitBaseId() != null) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Seleccione un kit base para personalizar");
         }
-        base.setKitBaseId(base.getKitId());
-        base.setEstado(EstadoKit.PERSONALIZADO);
-        return kitRepository.agregar(base);
+        // El kit personalizado se arma con los datos y la lista final de artículos que envía el usuario.
+        Kit personalizado = new Kit();
+        personalizado.setName(datos.getName());
+        personalizado.setDescription(datos.getDescription());
+        personalizado.setCourse(datos.getCourse());
+        personalizado.setPrice(datos.getPrice());
+        personalizado.setActive(true);
+        personalizado.setArticulos(datos.getArticulos());
+        personalizado.setKitBaseId(base.getKitId());
+        personalizado.setEstado(EstadoKit.PERSONALIZADO);
+        personalizado.setUsuarioId(datos.getUsuarioId());
+        return kitRepository.agregar(personalizado);
+    }
+
+    // Mientras no exista la opción de usuario, sin usuarioId se listan todos los kits personalizados.
+    public List<Kit> listarPersonalizados(Integer usuarioId) {
+        if (usuarioId == null) {
+            return kitRepository.getPersonalizados();
+        }
+        return kitRepository.getPersonalizadosPorUsuario(usuarioId);
     }
 
     public List<Articulo> listarArticulos(int kitId) {

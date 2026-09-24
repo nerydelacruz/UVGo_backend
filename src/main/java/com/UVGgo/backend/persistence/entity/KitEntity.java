@@ -27,7 +27,10 @@ public class KitEntity {
     @OneToMany(mappedBy = "kit", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("id ASC")
     private List<ArticuloEntity> articulos = new ArrayList<>();
+    private Integer usuarioId;
 
+    public Integer getUsuarioId() { return usuarioId; }
+    public void setUsuarioId(Integer usuarioId) { this.usuarioId = usuarioId; }
     public Integer getKitBaseId() { return kitBaseId; }
     public void setKitBaseId(Integer kitBaseId) { this.kitBaseId = kitBaseId; }
     public EstadoKit getEstadoPersonalizacion() { return estadoPersonalizacion; }

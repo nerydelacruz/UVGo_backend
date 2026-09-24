@@ -29,7 +29,11 @@ public class Kit {
     private Integer kitBaseId;
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private EstadoKit estado = EstadoKit.BASE;
+    @Positive
+    private Integer usuarioId;
 
+    public Integer getUsuarioId() { return usuarioId; }
+    public void setUsuarioId(Integer usuarioId) { this.usuarioId = usuarioId; }
     public List<Articulo> getArticulos() { return articulos; }
     public void setArticulos(List<Articulo> articulos) { this.articulos = articulos; }
     public Integer getKitBaseId() { return kitBaseId; }
