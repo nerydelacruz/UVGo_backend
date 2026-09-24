@@ -1,14 +1,41 @@
 package com.UVGgo.backend.domain;
 
+import jakarta.validation.constraints.*;
+import jakarta.validation.Valid;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import java.util.ArrayList;
+import java.util.List;
 import java.math.BigDecimal;
 
 public class Kit {
     private int kitId;
+    @NotBlank
+    @Size(max = 120)
     private String name;
+    @Size(max = 500)
     private String description;
+    @NotBlank
+    @Size(max = 150)
     private String course;
+    @NotNull
+    @DecimalMin("0.00")
+    @Digits(integer = 8, fraction = 2)
     private BigDecimal price;
-    private boolean active;
+    private boolean active = true;
+    @NotNull
+    @Valid
+    private List<@NotNull Articulo> articulos = new ArrayList<>();
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private Integer kitBaseId;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    private EstadoKit estado = EstadoKit.BASE;
+
+    public List<Articulo> getArticulos() { return articulos; }
+    public void setArticulos(List<Articulo> articulos) { this.articulos = articulos; }
+    public Integer getKitBaseId() { return kitBaseId; }
+    public void setKitBaseId(Integer kitBaseId) { this.kitBaseId = kitBaseId; }
+    public EstadoKit getEstado() { return estado; }
+    public void setEstado(EstadoKit estado) { this.estado = estado; }
 
     public int getKitId() {
         return kitId;

@@ -1,6 +1,9 @@
 package com.UVGgo.backend.persistence.entity;
 
 import jakarta.persistence.*;
+import com.UVGgo.backend.domain.EstadoKit;
+import java.util.ArrayList;
+import java.util.List;
 
 import java.math.BigDecimal;
 
@@ -17,6 +20,20 @@ public class KitEntity {
     private String curso;
     private BigDecimal precio;
     private Boolean estado;
+    private Integer kitBaseId;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private EstadoKit estadoPersonalizacion = EstadoKit.BASE;
+    @OneToMany(mappedBy = "kit", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC")
+    private List<ArticuloEntity> articulos = new ArrayList<>();
+
+    public Integer getKitBaseId() { return kitBaseId; }
+    public void setKitBaseId(Integer kitBaseId) { this.kitBaseId = kitBaseId; }
+    public EstadoKit getEstadoPersonalizacion() { return estadoPersonalizacion; }
+    public void setEstadoPersonalizacion(EstadoKit estadoPersonalizacion) { this.estadoPersonalizacion = estadoPersonalizacion; }
+    public List<ArticuloEntity> getArticulos() { return articulos; }
+    public void setArticulos(List<ArticuloEntity> articulos) { this.articulos = articulos; }
 
     public Integer getIdKit() {
         return idKit;
