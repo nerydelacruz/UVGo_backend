@@ -10,4 +10,6 @@ public interface KitRepository {
     Kit agregar(Kit kit);
     Optional<Kit> getById(int kitId);
     Kit actualizar(Kit kit);
+    void eliminar(int kitId);
+    boolean tienePersonalizaciones(int kitId);
 }

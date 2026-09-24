@@ -32,6 +32,26 @@ public class KitService {
     }
 
     @Transactional
+    public Kit editar(int kitId, Kit datos) {
+        Kit kit = consultar(kitId);
+        kit.setName(datos.getName());
+        kit.setDescription(datos.getDescription());
+        kit.setCourse(datos.getCourse());
+        kit.setPrice(datos.getPrice());
+        kit.setActive(datos.isActive());
+        return kitRepository.actualizar(kit);
+    }
+
+    @Transactional
+    public void eliminar(int kitId) {
+        consultar(kitId);
+        if (kitRepository.tienePersonalizaciones(kitId)) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "No se puede eliminar un kit base con copias personalizadas");
+        }
+        kitRepository.eliminar(kitId);
+    }
+
+    @Transactional
     public Kit personalizarKit(int kitId) {
         Kit base = consultar(kitId);
         if (base.getKitBaseId() != null) {
@@ -44,6 +64,11 @@ public class KitService {
 
     public List<Articulo> listarArticulos(int kitId) {
         return consultar(kitId).getArticulos();
+    }
+
+    public Articulo consultarArticulo(int kitId, int articuloId) {
+        Kit kit = consultar(kitId);
+        return kit.getArticulos().get(posicionArticulo(kit, articuloId));
     }
 
     @Transactional

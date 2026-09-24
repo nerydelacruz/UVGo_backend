@@ -51,4 +51,15 @@ public class KitEntityRepository implements KitRepository {
         entidad.getArticulos().forEach(articulo -> articulo.setKit(entidad));
         return mapper.toKit(kitCrudRepository.save(entidad));
     }
+
+    @Override
+    public void eliminar(int kitId) {
+        kitCrudRepository.deleteById(kitId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean tienePersonalizaciones(int kitId) {
+        return kitCrudRepository.existsByKitBaseId(kitId);
+    }
 }

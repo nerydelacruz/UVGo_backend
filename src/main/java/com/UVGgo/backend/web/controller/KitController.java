@@ -7,6 +7,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,6 +37,17 @@ public class KitController {
     @GetMapping("/{kitId}")
     public Kit consultar(@PathVariable int kitId) {
         return kitService.consultar(kitId);
+    }
+
+    @PutMapping("/{kitId}")
+    public Kit editar(@PathVariable int kitId, @Valid @RequestBody Kit kit) {
+        return kitService.editar(kitId, kit);
+    }
+
+    @DeleteMapping("/{kitId}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void eliminar(@PathVariable int kitId) {
+        kitService.eliminar(kitId);
     }
 
     @PostMapping("/{kitId}/personalizar")

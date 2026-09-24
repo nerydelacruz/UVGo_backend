@@ -20,6 +20,11 @@ public class ArticuloController {
         return kits.agregarArticulo(kitId, articulo);
     }
 
+    @GetMapping("/{articuloId}")
+    public Articulo consultarArticulo(@PathVariable int kitId, @PathVariable int articuloId) {
+        return kits.consultarArticulo(kitId, articuloId);
+    }
+
     @PutMapping("/{articuloId}")
     public Articulo editarArticulo(@PathVariable int kitId, @PathVariable int articuloId,
                                   @Valid @RequestBody Articulo articulo) {

@@ -7,4 +7,5 @@ import java.util.List;
 
 public interface KitCrudRepository extends CrudRepository<KitEntity, Integer> {
     List<KitEntity> findAllByOrderByNombreAsc();
+    boolean existsByKitBaseId(Integer kitBaseId);
 }
