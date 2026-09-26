@@ -34,8 +34,9 @@ automáticamente las descripciones antiguas en artículos.
 ## Personalizar
 
 `POST /kits/{kitId}/personalizar`, sin cuerpo, devuelve `201` con una copia nueva.
-La copia tiene `kitBaseId` igual al ID del original, estado `PERSONALIZADO` y
-artículos independientes con IDs nuevos. El original conserva estado `BASE`.
+La copia tiene `kitBaseId` igual al ID del original, `estado` = `1` (PERSONALIZADO) y
+artículos independientes con IDs nuevos. El original conserva `estado` = `0` (BASE).
+El significado de cada código de `estado` se consulta en la tabla `estados_kit`.
 Solo se personalizan kits base; intentar copiar un kit personalizado devuelve `409`.
 Usar el ID devuelto para modificar los artículos de la copia.
 
@@ -48,6 +49,8 @@ Usar el ID devuelto para modificar los artículos de la copia.
 | PUT | `/kits/{kitId}/articulos/{articuloId}` | Reemplaza los datos editables, `200`. |
 | DELETE | `/kits/{kitId}/articulos/{articuloId}` | Retira físicamente el artículo, `204`. |
 | GET | `/kits/{kitId}` | Consulta un kit con sus artículos, `200`. |
+| GET | `/kits/base` | Lista solo los kits base (`estado` = `0`), `200`. |
+| GET | `/kits/personalizados` | Lista solo los kits personalizados (`estado` = `1`), `200`. |
 
 Para POST y PUT se usa el mismo objeto de artículo del ejemplo anterior.
 Nombre, descripción y cantidad son obligatorios. Cantidad debe ser positiva,
@@ -61,11 +64,16 @@ Los datos inválidos devuelven `400`.
 
 ## Alcance
 
-- Cada artículo pertenece a un único kit; no hay catálogo global de artículos.
+- Los artículos se identifican por nombre y categoría en un catálogo compartido: si dos
+  kits usan el mismo artículo, internamente se reutiliza el mismo registro del catálogo
+  en vez de duplicarlo. Esto es transparente para la API: cada artículo se sigue viendo
+  y administrando como parte de un único kit.
 - Se pueden administrar artículos tanto del kit base como de una copia.
 - `GET /kits` lista kits base y personalizados.
 - El precio del kit se copia sin cambios. Los artículos no tienen precio y no se calcula una cotización.
-- `active` conserva su significado de habilitado; `estado` distingue BASE/PERSONALIZADO.
+- `active` conserva su significado de habilitado; `estado` es un código numérico
+  (`0` = BASE, `1` = PERSONALIZADO) que referencia la tabla `estados_kit`.
 - Esta versión no incluye usuarios, control de propiedad, historial ni flujo de aprobación.
-- La migración Flyway V2 crea la tabla `articulos` y amplía `kits` al arrancar
-  contra la base configurada. Las pruebas normales utilizan H2, no la base remota.
+- Las migraciones Flyway (V2 a V5) crean y ajustan las tablas `articulos` (catálogo),
+  `kit_articulos` (relación kit-artículo), `estados_kit` (catálogo de estados) y `kits`
+  al arrancar contra la base configurada. Las pruebas normales utilizan H2, no la base remota.

@@ -62,4 +62,9 @@ public class KitController {
     public List<Kit> listarPersonalizados(@RequestParam(required = false) Integer usuarioId) {
         return kitService.listarPersonalizados(usuarioId);
     }
+
+    @GetMapping("/base")
+    public List<Kit> listarBase() {
+        return kitService.listarBase();
+    }
 }

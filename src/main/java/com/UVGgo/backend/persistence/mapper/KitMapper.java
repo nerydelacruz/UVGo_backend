@@ -2,7 +2,7 @@ package com.UVGgo.backend.persistence.mapper;
 
 import com.UVGgo.backend.domain.Kit;
 import com.UVGgo.backend.domain.Articulo;
-import com.UVGgo.backend.persistence.entity.ArticuloEntity;
+import com.UVGgo.backend.persistence.entity.KitArticuloEntity;
 import com.UVGgo.backend.persistence.entity.KitEntity;
 import org.mapstruct.InheritInverseConfiguration;
 import org.mapstruct.Mapper;
@@ -26,11 +26,12 @@ public interface KitMapper {
     List<Kit> toKits(List<KitEntity> kitEntities);
 
     @InheritInverseConfiguration
+    @Mapping(target = "articulos", ignore = true)
     KitEntity toKitEntity(Kit kit);
 
     @Mapping(source = "kit.idKit", target = "kitId")
-    Articulo toArticulo(ArticuloEntity articulo);
-
-    @Mapping(target = "kit", ignore = true)
-    ArticuloEntity toArticuloEntity(Articulo articulo);
+    @Mapping(source = "articulo.nombre", target = "nombre")
+    @Mapping(source = "articulo.descripcion", target = "descripcion")
+    @Mapping(source = "articulo.categoria", target = "categoria")
+    Articulo toArticulo(KitArticuloEntity kitArticulo);
 }

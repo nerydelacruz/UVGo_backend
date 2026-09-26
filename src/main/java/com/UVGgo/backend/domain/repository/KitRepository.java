@@ -14,4 +14,5 @@ public interface KitRepository {
     boolean tienePersonalizaciones(int kitId);
     List<Kit> getPersonalizados();
     List<Kit> getPersonalizadosPorUsuario(int usuarioId);
+    List<Kit> getBase();
 }

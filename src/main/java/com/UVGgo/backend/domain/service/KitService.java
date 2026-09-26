@@ -43,7 +43,25 @@ public class KitService {
         kit.setCourse(datos.getCourse());
         kit.setPrice(datos.getPrice());
         kit.setActive(datos.isActive());
+        // Los artículos que ya tenían id y siguen en la lista conservan su fecha;
+        // los que llegan sin id (nuevos) se crean con fecha actual.
+        kit.setArticulos(datos.getArticulos().stream()
+                .map(articulo -> articulo.id() == null
+                        ? new Articulo(null, kitId, articulo.nombre(), articulo.descripcion(),
+                                articulo.cantidad(), articulo.categoria(), Instant.now(), articulo.observacionesCotizacion())
+                        : new Articulo(articulo.id(), kitId, articulo.nombre(), articulo.descripcion(),
+                                articulo.cantidad(), articulo.categoria(),
+                                fechaOriginal(kit, articulo.id()), articulo.observacionesCotizacion()))
+                .toList());
         return kitRepository.actualizar(kit);
+    }
+
+    private Instant fechaOriginal(Kit kitActual, Integer articuloId) {
+        return kitActual.getArticulos().stream()
+                .filter(articulo -> articulo.id().equals(articuloId))
+                .findFirst()
+                .map(Articulo::fechaCreacion)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Artículo no encontrado en este kit"));
     }
 
     @Transactional
@@ -84,6 +102,10 @@ public class KitService {
             return kitRepository.getPersonalizados();
         }
         return kitRepository.getPersonalizadosPorUsuario(usuarioId);
+    }
+
+    public List<Kit> listarBase() {
+        return kitRepository.getBase();
     }
 
     public List<Articulo> listarArticulos(int kitId) {
