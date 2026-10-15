@@ -3,15 +3,16 @@ package com.UVGgo.backend.domain;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import java.math.BigDecimal;
-import java.time.Instant;
 
 public record Articulo(
         @JsonProperty(access = JsonProperty.Access.READ_ONLY) Integer id,
-        @JsonProperty(access = JsonProperty.Access.READ_ONLY) Integer kitId,
-        @NotBlank @Size(max = 120) String nombre,
-        @NotBlank @Size(max = 500) String descripcion,
-        @NotNull @DecimalMin("0.001") @Digits(integer = 9, fraction = 3) BigDecimal cantidad,
+        @NotBlank @Size(max = 300) String nombre,
+        @NotBlank @Size(max = 4000) String descripcion,
         @Size(max = 100) String categoria,
-        @JsonProperty(access = JsonProperty.Access.READ_ONLY) Instant fechaCreacion,
-        @Size(max = 2000) String observacionesCotizacion) {
+        @Size(max = 2000) String imagen,
+        @DecimalMin("0.00") @Digits(integer = 10, fraction = 2) BigDecimal precio,
+        @Size(max = 10) String moneda,
+        @Size(max = 150) String tienda,
+        @Size(max = 2000) String url,
+        @Size(max = 255) String idExterno) {
 }
