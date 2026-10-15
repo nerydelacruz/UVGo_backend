@@ -16,7 +16,7 @@ public class PedidoEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 40)
-    private EstadoPedido estado = EstadoPedido.PENDIENTE_COTIZACION;
+    private EstadoPedido estado = EstadoPedido.SOLICITADO;
 
     @Column(name = "fecha_creacion", nullable = false, updatable = false)
     private Instant fechaCreacion;

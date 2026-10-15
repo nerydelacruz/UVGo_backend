@@ -7,7 +7,6 @@ import jakarta.validation.constraints.Positive;
 import java.math.BigDecimal;
 
 public record PedidoDetalleRequest(
-        @NotNull @Positive Integer kitId,
-        @NotNull @Positive Integer kitArticuloId,
+        @NotNull @Positive Integer articuloId,
         @NotNull @DecimalMin("0.001") @Digits(integer = 9, fraction = 3) BigDecimal cantidad) {
 }

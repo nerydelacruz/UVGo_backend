@@ -20,4 +20,15 @@ public interface PedidoCrudRepository extends CrudRepository<PedidoEntity, Integ
             """)
     int cancelarPendiente(@Param("id") int pedidoId, @Param("fecha") Instant fecha,
                           @Param("pendiente") EstadoPedido pendiente, @Param("cancelado") EstadoPedido cancelado);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("""
+            update PedidoEntity p set p.estado = :nuevo
+            where p.pedidoId = :id and p.estado = :actual
+            """)
+    int actualizarEstado(@Param("id") int pedidoId, @Param("actual") EstadoPedido actual,
+                         @Param("nuevo") EstadoPedido nuevo);
+
+    @Query("select count(d) > 0 from PedidoDetalleEntity d where d.articuloId = :articuloId")
+    boolean contieneArticulo(@Param("articuloId") int articuloId);
 }

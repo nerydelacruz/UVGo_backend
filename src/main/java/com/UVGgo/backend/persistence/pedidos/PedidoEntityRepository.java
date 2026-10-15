@@ -46,6 +46,17 @@ public class PedidoEntityRepository implements PedidoRepository {
     @Transactional
     public boolean cancelarPendiente(int pedidoId, Instant fechaCancelacion) {
         return crud.cancelarPendiente(pedidoId, fechaCancelacion,
-                EstadoPedido.PENDIENTE_COTIZACION, EstadoPedido.CANCELADO) == 1;
+                EstadoPedido.SOLICITADO, EstadoPedido.CANCELADO) == 1;
+    }
+
+    @Override
+    @Transactional
+    public boolean actualizarEstado(int pedidoId, EstadoPedido actual, EstadoPedido nuevo) {
+        return crud.actualizarEstado(pedidoId, actual, nuevo) == 1;
+    }
+
+    @Override
+    public boolean contieneArticulo(int articuloId) {
+        return crud.contieneArticulo(articuloId);
     }
 }

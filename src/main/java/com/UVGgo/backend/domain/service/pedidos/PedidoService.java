@@ -3,6 +3,7 @@ package com.UVGgo.backend.domain.service.pedidos;
 import com.UVGgo.backend.domain.pedidos.EstadoPedido;
 import com.UVGgo.backend.domain.pedidos.Pedido;
 import com.UVGgo.backend.domain.pedidos.PedidoDetalle;
+import com.UVGgo.backend.domain.pedidos.SeguimientoPedido;
 import com.UVGgo.backend.domain.repository.pedidos.PedidoRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -23,18 +24,18 @@ public class PedidoService {
 
     @Transactional
     public Pedido crear(List<PedidoDetalle> detalles) {
-        var referencias = new HashSet<Referencia>();
+        var articulos = new HashSet<Integer>();
         for (PedidoDetalle detalle : detalles) {
-            if (!referencias.add(new Referencia(detalle.kitId(), detalle.kitArticuloId()))) {
+            if (!articulos.add(detalle.articuloId())) {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                        "No se puede repetir un artículo del mismo kit en el pedido");
+                        "No se puede repetir un artículo en el pedido");
             }
         }
-        // Se registran referencias declaradas, sin consultar ni modificar kits.
+        // Se registran los artículos declarados, sin consultar ni modificar el stock.
         var nuevos = detalles.stream()
-                .map(d -> new PedidoDetalle(null, d.kitId(), d.kitArticuloId(), d.cantidad()))
+                .map(d -> new PedidoDetalle(null, d.articuloId(), d.cantidad()))
                 .toList();
-        return repository.agregar(new Pedido(null, EstadoPedido.PENDIENTE_COTIZACION,
+        return repository.agregar(new Pedido(null, EstadoPedido.SOLICITADO,
                 Instant.now(), null, nuevos));
     }
 
@@ -53,8 +54,8 @@ public class PedidoService {
         if (pedido.estado() == EstadoPedido.CANCELADO) {
             return pedido;
         }
-        if (pedido.estado() != EstadoPedido.PENDIENTE_COTIZACION) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Solo se pueden cancelar pedidos pendientes");
+        if (pedido.estado() != EstadoPedido.SOLICITADO) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Solo se pueden cancelar pedidos en estado SOLICITADO");
         }
         // La condición se comprueba también en la base para no sobrescribir otro estado.
         if (!repository.cancelarPendiente(pedidoId, Instant.now())) {
@@ -67,6 +68,37 @@ public class PedidoService {
         return consultar(pedidoId);
     }
 
-    private record Referencia(Integer kitId, Integer kitArticuloId) {
+    public SeguimientoPedido consultarSeguimiento(int pedidoId) {
+        Pedido pedido = consultar(pedidoId);
+        return new SeguimientoPedido(pedido.pedidoId(), pedido.estado(),
+                pedido.estado().siguiente(), pedido.estado().anterior());
+    }
+
+    @Transactional
+    public Pedido actualizarEstado(int pedidoId, EstadoPedido nuevo) {
+        if (nuevo == EstadoPedido.CANCELADO) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Para cancelar use POST /pedidos/{pedidoId}/cancelar");
+        }
+        Pedido pedido = consultar(pedidoId);
+        // Repetir la misma actualización (doble clic, reintento) devuelve el pedido sin cambios.
+        if (pedido.estado() == nuevo) {
+            return pedido;
+        }
+        // Solo se mueve un paso: al siguiente estado o al anterior.
+        if (nuevo != pedido.estado().siguiente() && nuevo != pedido.estado().anterior()) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El pedido está en " + pedido.estado()
+                    + "; siguiente permitido: " + pedido.estado().siguiente()
+                    + ", anterior permitido: " + pedido.estado().anterior());
+        }
+        // Igual que en cancelar: la condición se comprueba en la base para no sobrescribir otro cambio.
+        if (!repository.actualizarEstado(pedidoId, pedido.estado(), nuevo)) {
+            Pedido actual = consultar(pedidoId);
+            if (actual.estado() == nuevo) {
+                return actual;
+            }
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El estado del pedido ha cambiado");
+        }
+        return consultar(pedidoId);
     }
 }

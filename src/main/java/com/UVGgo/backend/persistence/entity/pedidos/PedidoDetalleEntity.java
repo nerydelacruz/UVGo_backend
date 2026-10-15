@@ -14,11 +14,8 @@ public class PedidoDetalleEntity {
     @JoinColumn(name = "pedido_id", nullable = false)
     private PedidoEntity pedido;
 
-    @Column(name = "kit_id", nullable = false)
-    private Integer kitId;
-
-    @Column(name = "kit_articulo_id", nullable = false)
-    private Integer kitArticuloId;
+    @Column(name = "articulo_id", nullable = false)
+    private Integer articuloId;
 
     @Column(nullable = false, precision = 12, scale = 3)
     private BigDecimal cantidad;
@@ -27,10 +24,8 @@ public class PedidoDetalleEntity {
     public void setId(Integer id) { this.id = id; }
     public PedidoEntity getPedido() { return pedido; }
     public void setPedido(PedidoEntity pedido) { this.pedido = pedido; }
-    public Integer getKitId() { return kitId; }
-    public void setKitId(Integer kitId) { this.kitId = kitId; }
-    public Integer getKitArticuloId() { return kitArticuloId; }
-    public void setKitArticuloId(Integer kitArticuloId) { this.kitArticuloId = kitArticuloId; }
+    public Integer getArticuloId() { return articuloId; }
+    public void setArticuloId(Integer articuloId) { this.articuloId = articuloId; }
     public BigDecimal getCantidad() { return cantidad; }
     public void setCantidad(BigDecimal cantidad) { this.cantidad = cantidad; }
 }
