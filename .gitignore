@@ -38,3 +38,9 @@ out/
 .env
 .tools/
 uploads/
+
+### Gradle user home local ###
+.gradle-user/
+
+### Configuracion local ###
+src/main/resources/application*.properties
