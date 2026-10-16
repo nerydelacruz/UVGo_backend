@@ -37,6 +37,16 @@ dependencies {
 	implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
 	// Versión que define Spring Boot: springdoc necesita una más nueva que la 3.17 del SDK.
 	implementation 'org.apache.commons:commons-lang3'
+	// Azure Communication Services (correo). Se cambia Netty por el cliente HTTP del JDK
+	// para no traer una versión de Netty distinta a la que administra Spring Boot.
+	implementation('com.azure:azure-communication-email:1.1.5') {
+		exclude group: 'com.azure', module: 'azure-core-http-netty'
+	}
+	// Azure Blob Storage (comprobantes de pago); misma versión de azure-core que el SDK de correo.
+	implementation('com.azure:azure-storage-blob:12.35.1') {
+		exclude group: 'com.azure', module: 'azure-core-http-netty'
+	}
+	implementation 'com.azure:azure-core-http-jdk-httpclient:1.1.7'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
 	testImplementation 'org.springframework.security:spring-security-test'

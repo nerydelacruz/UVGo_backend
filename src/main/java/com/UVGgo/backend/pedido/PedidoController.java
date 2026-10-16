@@ -2,12 +2,14 @@ package com.UVGgo.backend.pedido;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.UUID;
 
@@ -39,6 +41,31 @@ public class PedidoController {
     @PostMapping("/{pedidoId}/cancelacion")
     public PedidoDtos.Detalle cancelar(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID pedidoId,@Valid @RequestBody PedidoDtos.Cancelacion r) {
         return pedidos.cancelar(pedidoId,id(jwt),admin(jwt),r.version());
+    }
+    @PostMapping("/{pedidoId}/cotizacion") @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public PedidoDtos.Detalle cotizar(@PathVariable UUID pedidoId,@Valid @RequestBody PedidoDtos.Cotizacion r) {
+        return pedidos.cotizar(pedidoId,r);
+    }
+    @PostMapping("/{pedidoId}/aceptacion") @PreAuthorize("hasRole('ESTUDIANTE')")
+    public PedidoDtos.Detalle aceptar(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID pedidoId,@Valid @RequestBody PedidoDtos.Aceptacion r) {
+        return pedidos.aceptar(pedidoId,id(jwt),r.version());
+    }
+    // multipart/form-data: campo "archivo" (PDF, PNG o JPG, máx. 5 MB) y la versión actual de la solicitud.
+    @PutMapping(value="/{pedidoId}/comprobante",consumes=MediaType.MULTIPART_FORM_DATA_VALUE) @PreAuthorize("hasRole('ESTUDIANTE')")
+    public PedidoDtos.Detalle adjuntarComprobante(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID pedidoId,
+                                                  @RequestParam @Min(0) long version,@RequestPart MultipartFile archivo) {
+        return pedidos.adjuntarComprobante(pedidoId,id(jwt),version,archivo);
+    }
+    @GetMapping("/{pedidoId}/comprobante")
+    public ResponseEntity<byte[]> comprobante(@AuthenticationPrincipal Jwt jwt,@PathVariable UUID pedidoId) {
+        PedidoDtos.Archivo a=pedidos.comprobante(pedidoId,id(jwt),admin(jwt));
+        return ResponseEntity.ok().contentType(MediaType.parseMediaType(a.tipo()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,ContentDisposition.inline().filename(a.nombre(),StandardCharsets.UTF_8).build().toString())
+                .body(a.contenido());
+    }
+    @PostMapping("/{pedidoId}/pago") @PreAuthorize("hasRole('ADMINISTRADOR')")
+    public PedidoDtos.Detalle registrarPago(@PathVariable UUID pedidoId,@Valid @RequestBody PedidoDtos.Pago r) {
+        return pedidos.registrarPago(pedidoId,r.version());
     }
     private UUID id(Jwt jwt) { return UUID.fromString(jwt.getSubject()); }
     private boolean admin(Jwt jwt) { return "ADMINISTRADOR".equals(jwt.getClaimAsString("rol")); }
