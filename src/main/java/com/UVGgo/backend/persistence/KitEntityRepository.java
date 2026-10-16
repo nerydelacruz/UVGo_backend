@@ -43,11 +43,12 @@ public class KitEntityRepository implements KitRepository {
         return mapper.toKit(kitCrudRepository.save(entidad));
     }
 
-    // El artículo es un catálogo compartido: se reutiliza por nombre+categoría
-    // en vez de duplicarlo cada vez que un kit lo usa.
+    // El catálogo se reutiliza cuando nombre, categoría y descripción coinciden.
     private ArticuloEntity resolverCatalogo(Articulo datos) {
-        ArticuloEntity entidad = articuloCrudRepository.findByNombreAndCategoria(datos.nombre(), datos.categoria())
-                .orElseGet(ArticuloEntity::new);
+        // No sobrescribir la descripción de un catálogo usado por otros kits.
+        // Una variante con distinta descripción necesita su propia entrada.
+        ArticuloEntity entidad = articuloCrudRepository.findFirstByNombreAndCategoriaAndDescripcion(
+                datos.nombre(), datos.categoria(), datos.descripcion()).orElseGet(ArticuloEntity::new);
         entidad.setNombre(datos.nombre());
         entidad.setDescripcion(datos.descripcion());
         entidad.setCategoria(datos.categoria());

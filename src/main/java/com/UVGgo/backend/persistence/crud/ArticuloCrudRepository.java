@@ -7,4 +7,5 @@ import java.util.Optional;
 
 public interface ArticuloCrudRepository extends CrudRepository<ArticuloEntity, Integer> {
     Optional<ArticuloEntity> findByNombreAndCategoria(String nombre, String categoria);
+    Optional<ArticuloEntity> findFirstByNombreAndCategoriaAndDescripcion(String nombre, String categoria, String descripcion);
 }
