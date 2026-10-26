@@ -18,17 +18,32 @@ repositories {
 }
 
 dependencies {
+	// Extracción de productos desde PDF: PDFBox saca el texto (menos tokens que mandar el PDF) y el SDK llama a Claude
 	implementation 'org.apache.pdfbox:pdfbox:3.0.8'
+	implementation 'com.anthropic:anthropic-java:2.34.0'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+	implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
 	implementation 'org.springframework.boot:spring-boot-starter-flyway'
 	implementation 'org.flywaydb:flyway-database-postgresql'
 	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:3.1.1'
 	implementation 'org.mapstruct:mapstruct:1.6.3'
 	annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+	// Azure Communication Services (correo). Se cambia Netty por el cliente HTTP del JDK
+	// para no traer una versión de Netty distinta a la que administra Spring Boot.
+	implementation('com.azure:azure-communication-email:1.1.5') {
+		exclude group: 'com.azure', module: 'azure-core-http-netty'
+	}
+	// Azure Blob Storage (comprobantes de pago); misma versión de azure-core que el SDK de correo.
+	implementation('com.azure:azure-storage-blob:12.35.1') {
+		exclude group: 'com.azure', module: 'azure-core-http-netty'
+	}
+	implementation 'com.azure:azure-core-http-jdk-httpclient:1.1.7'
 	runtimeOnly 'org.postgresql:postgresql'
 	testImplementation 'org.springframework.boot:spring-boot-starter-webmvc-test'
+	testImplementation 'org.springframework.security:spring-security-test'
 	testRuntimeOnly 'com.h2database:h2'
 	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 }
