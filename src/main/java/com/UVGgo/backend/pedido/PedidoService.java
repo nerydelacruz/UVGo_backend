@@ -36,6 +36,7 @@ public class PedidoService {
         if (!(u instanceof Estudiante e)) throw new ApiException(HttpStatus.FORBIDDEN,"Solo estudiantes pueden solicitar cotizaciones");
         Pedido p=pedidos.saveAndFlush(new Pedido(e,s,catalogo(s)));
         eventos.publishEvent(CorreosPedido.recibida(p));
+        buscarEnCatalogo(p,s);
         return PedidoDtos.Detalle.de(p);
     }
     @Transactional(readOnly=true)
@@ -53,7 +54,7 @@ public class PedidoService {
     }
     public PedidoDtos.Detalle editar(UUID id,UUID usuario,PedidoDtos.Edicion r) {
         Pedido p=visible(id,usuario,false); comprobarVersion(p,r.version()); p.actualizar(r.solicitud(),catalogo(r.solicitud()));
-        pedidos.flush(); return PedidoDtos.Detalle.de(p);
+        pedidos.flush(); buscarEnCatalogo(p,r.solicitud()); return PedidoDtos.Detalle.de(p);
     }
     public PedidoDtos.Detalle cancelar(UUID id,UUID usuario,boolean admin,long version) {
         Pedido p=visible(id,usuario,admin); comprobarVersion(p,version);
@@ -117,6 +118,17 @@ public class PedidoService {
         String limpio=original==null ? "" : original.replaceAll(".*[/\\\\]","").replaceAll("\\p{Cntrl}","").strip();
         if (limpio.length()>255) limpio=limpio.substring(limpio.length()-255);
         return limpio.isEmpty() ? "comprobante."+tipo.extension() : limpio;
+    }
+    // Los materiales de texto libre se buscan en el catálogo en segundo plano, después de guardar la solicitud.
+    private void buscarEnCatalogo(Pedido p,PedidoDtos.Solicitud s) {
+        List<SolicitudGuardada.Material> materiales=new ArrayList<>();
+        for (int i=0;i<s.productos().size();i++) {
+            PedidoDtos.Producto pr=s.productos().get(i);
+            if (pr.texto()!=null) materiales.add(new SolicitudGuardada.Material(p.getItems().get(i).getId(),pr.texto(),pr.codigo(),pr.termino()));
+        }
+        if (materiales.isEmpty()) { p.terminarBusquedaCatalogo(); return; }
+        p.iniciarBusquedaCatalogo();
+        eventos.publishEvent(new SolicitudGuardada(p.getId(),materiales));
     }
     // Carga los artículos del catálogo que pide la solicitud; todos deben existir.
     private Map<Integer,Articulo> catalogo(PedidoDtos.Solicitud s) {

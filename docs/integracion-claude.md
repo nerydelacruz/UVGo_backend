@@ -5,11 +5,11 @@ El estudiante sube un PDF (por ejemplo, la lista de materiales de un curso) y re
 ## Flujo
 
 ```
-PDF ──► PDFBox saca el texto ──► Claude (texto + instrucción corta) ──► { productos: [{ nombre, cantidad }] }
+PDF ──► Claude (PDF completo + instrucción corta) ──► { productos: [{ nombre, cantidad }] }
 ```
 
 - `POST /uvgo/api/api/v1/extracciones/productos`, multipart, campo `archivo`. Requiere sesión de estudiante.
-- `ExtraccionService` lee el PDF con PDFBox y llama a Claude con el SDK oficial (`com.anthropic:anthropic-java`).
+- `ExtraccionService` manda el PDF completo a Claude con el SDK oficial (`com.anthropic:anthropic-java`).
 - La respuesta se tipa con el record `ProductosExtraidos`; el SDK genera el JSON schema.
 
 ## Por qué así (ahorro de tokens)

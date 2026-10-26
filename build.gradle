@@ -18,8 +18,7 @@ repositories {
 }
 
 dependencies {
-	// Extracción de productos desde PDF: PDFBox saca el texto (menos tokens que mandar el PDF) y el SDK llama a Claude
-	implementation 'org.apache.pdfbox:pdfbox:3.0.8'
+	// Extracción de productos desde PDF: el SDK manda el PDF completo a Claude
 	implementation 'com.anthropic:anthropic-java:2.34.0'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'

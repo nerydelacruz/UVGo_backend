@@ -18,6 +18,7 @@ import org.springframework.test.web.servlet.*;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 import java.time.LocalDate;
+import java.util.List;
 import java.util.UUID;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -164,6 +165,49 @@ class BackendApiTests {
         String correo=correo();
         usuarios.saveAndFlush(new Administrador("Administrador ficticio",correo,"55550000",passwords.encode(PASSWORD),"PRUEBA"));
         return login(correo);
+    }
+    @Test void aceptaMaterialesDeTextoLibreYRechazaOrigenesInvalidos() throws Exception {
+        String estudiante=cuenta();
+        String conTexto=solicitud().replaceAll("\"productos\":\\[.*\\]\\}","\"productos\":[{\"texto\":\"74LS08N AND DIP-14\",\"cantidad\":3}]}");
+        mvc.perform(post("/api/v1/pedidos").header("Authorization","Bearer "+estudiante)
+                .contentType(MediaType.APPLICATION_JSON).content(conTexto)).andExpect(status().isCreated())
+                .andExpect(jsonPath("productos[0].tipo").value("TEXTO"))
+                .andExpect(jsonPath("productos[0].descripcion").value("74LS08N AND DIP-14"))
+                .andExpect(jsonPath("productos[0].cantidad").value(3));
+        for (String invalido : List.of(
+                conTexto.replace("\"texto\":\"74LS08N AND DIP-14\"","\"texto\":\"   \""),
+                conTexto.replace("\"texto\":","\"articuloId\":1,\"texto\":")))
+            mvc.perform(post("/api/v1/pedidos").header("Authorization","Bearer "+estudiante)
+                    .contentType(MediaType.APPLICATION_JSON).content(invalido)).andExpect(status().isBadRequest());
+    }
+    @Test void enlazaEnSegundoPlanoLosMaterialesDeTextoConElCatalogo() throws Exception {
+        int articuloId=json.readTree(mvc.perform(post("/articulos").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"nombre\":\"Circuito integrado 74LS08N\",\"descripcion\":\"Compuerta AND DIP-14\",\"precio\":8.50,\"moneda\":\"GTQ\",\"tienda\":\"Tienda X\"}"))
+                .andExpect(status().isCreated()).andReturn().getResponse().getContentAsString()).get("id").asInt();
+        try {
+            String estudiante=cuenta();
+            String body=solicitud().replaceAll("\"productos\":\\[.*\\]\\}",
+                    "\"productos\":[{\"texto\":\"74LS08N – AND de 2 entradas ×4 (DIP-14)\",\"codigo\":\"74LS08N\",\"cantidad\":3},"
+                    +"{\"texto\":\"Pulsador normalmente abierto 6x6x5mm\",\"cantidad\":2}]}");
+            String id=json.readTree(mvc.perform(post("/api/v1/pedidos").header("Authorization","Bearer "+estudiante)
+                    .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isCreated())
+                    .andExpect(jsonPath("productos[0].tipo").value("TEXTO"))
+                    .andReturn().getResponse().getContentAsString()).get("id").asText();
+            // La búsqueda corre después de responder: se espera a que el primer material pase a ser del catálogo
+            JsonNode detalle=null;
+            for (int intento=0;intento<50;intento++) {
+                detalle=json.readTree(mvc.perform(get("/api/v1/pedidos/"+id).header("Authorization","Bearer "+estudiante))
+                        .andExpect(status().isOk()).andReturn().getResponse().getContentAsString());
+                if ("CATALOGO".equals(detalle.get("productos").get(0).get("tipo").asText())) break;
+                Thread.sleep(100);
+            }
+            assertThat(detalle.get("productos").get(0).get("tipo").asText()).isEqualTo("CATALOGO");
+            assertThat(detalle.get("productos").get(0).get("articuloId").asInt()).isEqualTo(articuloId);
+            assertThat(detalle.get("productos").get(0).get("cantidad").asInt()).isEqualTo(3);
+            assertThat(detalle.get("verificandoStock").asBoolean()).isFalse();
+            // Sin parecido en el catálogo el material sigue como "del PDF"
+            assertThat(detalle.get("productos").get(1).get("tipo").asText()).isEqualTo("TEXTO");
+        } finally { mvc.perform(delete("/articulos/"+articuloId)).andExpect(status().isNoContent()); }
     }
     @Test void cotizaYAceptaSolicitudConProductosDelCatalogoYDeLaWeb() throws Exception {
         int articuloId=json.readTree(mvc.perform(post("/articulos").contentType(MediaType.APPLICATION_JSON)

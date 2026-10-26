@@ -33,6 +33,8 @@ public class Pedido {
     private Long comprobanteTamano;
     private Instant fechaComprobante;
     private Instant fechaPago;
+    // Desde cuándo se buscan sus materiales de texto en el catálogo; null si no hay búsqueda en curso
+    private Instant busquedaCatalogoDesde;
     @OneToMany(mappedBy="pedido", cascade=CascadeType.ALL, orphanRemoval=true)
     @OrderColumn(name="posicion") private List<ItemPedido> items=new ArrayList<>();
     protected Pedido() {}
@@ -48,7 +50,9 @@ public class Pedido {
         items.clear();
         s.productos().forEach(pr -> items.add(pr.articuloId()!=null
                 ? new ItemPedido(this,catalogo.get(pr.articuloId()),pr.cantidad())
-                : new ItemPedido(this,pr.web(),pr.cantidad())));
+                : pr.web()!=null
+                ? new ItemPedido(this,pr.web(),pr.cantidad())
+                : new ItemPedido(this,pr.texto(),pr.cantidad())));
     }
     // El administrador pone precio a cada ítem; puede corregir la cotización mientras el estudiante no la acepte.
     public void cotizar(Map<UUID,BigDecimal> precios, BigDecimal cargoServicio, String notas) {
@@ -96,6 +100,12 @@ public class Pedido {
         fechaActualizacion=Instant.now();
     }
     public UUID getId() { return id; }
+    public void iniciarBusquedaCatalogo() { busquedaCatalogoDesde=Instant.now(); }
+    public void terminarBusquedaCatalogo() { busquedaCatalogoDesde=null; }
+    // La marca vence a los 2 minutos: si el servidor se reinicia a mitad de la búsqueda no queda "verificando" para siempre.
+    public boolean isVerificandoCatalogo() {
+        return busquedaCatalogoDesde!=null && busquedaCatalogoDesde.isAfter(Instant.now().minus(Duration.ofMinutes(2)));
+    }
     public long getVersion() { return version; }
     public Estudiante getEstudiante() { return estudiante; }
     public String getCurso() { return curso; }
