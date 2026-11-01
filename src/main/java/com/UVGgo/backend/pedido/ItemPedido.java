@@ -9,12 +9,16 @@ import java.util.UUID;
 @Entity
 @Table(name="items_pedido")
 public class ItemPedido {
-    public enum Tipo { CATALOGO, WEB, TEXTO }
+    public enum Tipo { CATALOGO, WEB, TEXTO, LISTA }
     @Id private UUID id=UUID.randomUUID();
     @ManyToOne(fetch=FetchType.LAZY, optional=false) @JoinColumn(name="pedido_id") private Pedido pedido;
     @Enumerated(EnumType.STRING) @Column(length=20) private Tipo tipo;
     private Integer articuloId;
     @Column(nullable=false, length=500) private String descripcion;
+    @Column(length=120) private String nombreMaterial;
+    @Column(name="unidad_medida", length=60) private String unidad;
+    @Column(length=1200) private String observacionesMaterial;
+    @Column(length=500) private String referenciaMaterial;
     @Column(nullable=false, precision=12, scale=3) private BigDecimal cantidad;
     @Column(length=2000) private String url;
     @Column(length=2000) private String imagen;
@@ -28,6 +32,12 @@ public class ItemPedido {
     @Column(precision=12, scale=2) private BigDecimal sugerenciaPrecio;
     @Column(length=10) private String sugerenciaMoneda;
     protected ItemPedido() {}
+    ItemPedido(Pedido pedido, PedidoDtos.MaterialLibre material) {
+        this.pedido=pedido; this.tipo=Tipo.LISTA;
+        this.nombreMaterial=material.nombre(); this.descripcion=material.descripcion();
+        this.cantidad=material.cantidad(); this.unidad=material.unidad();
+        this.observacionesMaterial=material.observaciones(); this.referenciaMaterial=material.referencia();
+    }
     ItemPedido(Pedido pedido, Articulo a, int cantidad) {
         this(pedido,Tipo.CATALOGO,a.nombre(),cantidad,a.url(),a.imagen(),a.tienda(),a.precio(),a.moneda());
         this.articuloId=a.id();
@@ -65,6 +75,10 @@ public class ItemPedido {
     public Tipo getTipo() { return tipo; }
     public Integer getArticuloId() { return articuloId; }
     public String getDescripcion() { return descripcion; }
+    public String getNombreMaterial() { return nombreMaterial; }
+    public String getUnidad() { return unidad; }
+    public String getObservacionesMaterial() { return observacionesMaterial; }
+    public String getReferenciaMaterial() { return referenciaMaterial; }
     public BigDecimal getCantidad() { return cantidad; }
     public String getUrl() { return url; }
     public String getImagen() { return imagen; }

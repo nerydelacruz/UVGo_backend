@@ -38,11 +38,19 @@ public class Pedido {
     @OneToMany(mappedBy="pedido", cascade=CascadeType.ALL, orphanRemoval=true)
     @OrderColumn(name="posicion") private List<ItemPedido> items=new ArrayList<>();
     protected Pedido() {}
+    public Pedido(Estudiante estudiante, PedidoDtos.DatosLista datos, List<PedidoDtos.MaterialLibre> materiales) {
+        this.estudiante=estudiante; curso=datos.curso().strip();
+        nombreCatedratico=datos.nombreCatedratico().strip(); fechaLimite=datos.fechaLimite();
+        observaciones=datos.observaciones(); puntoEntregaPreferido=datos.puntoEntregaPreferido();
+        materiales.forEach(material -> items.add(new ItemPedido(this,material)));
+    }
     // catalogo: artículos referenciados por la solicitud, ya validados por el servicio.
     public Pedido(Estudiante estudiante, PedidoDtos.Solicitud s, Map<Integer,Articulo> catalogo) {
         this.estudiante=estudiante; actualizar(s,catalogo);
     }
     public void actualizar(PedidoDtos.Solicitud s, Map<Integer,Articulo> catalogo) {
+        if (items.stream().anyMatch(i -> i.getTipo()==ItemPedido.Tipo.LISTA))
+            throw ApiException.conflicto("La solicitud conserva los materiales de la lista original; no se puede reemplazar desde el catálogo");
         if (estado!=EstadoPedido.SOLICITADO) throw ApiException.conflicto("Solo se puede editar antes de cotizar");
         curso=s.curso().strip(); nombreCatedratico=s.nombreCatedratico().strip(); fechaLimite=s.fechaLimite();
         observaciones=s.observaciones(); puntoEntregaPreferido=s.puntoEntregaPreferido();

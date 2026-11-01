@@ -39,6 +39,13 @@ public class PedidoService {
         buscarEnCatalogo(p,s);
         return PedidoDtos.Detalle.de(p);
     }
+    public PedidoDtos.Detalle crearDesdeLista(UUID usuario,PedidoDtos.DatosLista datos,List<PedidoDtos.MaterialLibre> materiales) {
+        Usuario u=usuarios.findById(usuario).orElseThrow(ApiException::noEncontrado);
+        if (!(u instanceof Estudiante e)) throw new ApiException(HttpStatus.FORBIDDEN,"Solo estudiantes pueden solicitar cotizaciones");
+        Pedido p=pedidos.saveAndFlush(new Pedido(e,datos,materiales));
+        eventos.publishEvent(CorreosPedido.recibida(p));
+        return PedidoDtos.Detalle.de(p);
+    }
     @Transactional(readOnly=true)
     public PedidoDtos.Detalle consultar(UUID id,UUID usuario,boolean admin) { return PedidoDtos.Detalle.de(visible(id,usuario,admin)); }
     @Transactional(readOnly=true)
