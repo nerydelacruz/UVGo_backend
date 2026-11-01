@@ -11,6 +11,14 @@ public final class PedidoDtos {
     private PedidoDtos() {}
     // Moneda en la que el administrador cotiza.
     public static final String MONEDA_COTIZACION="GTQ";
+    // Copia de materiales revisados; nunca se inventa una URL o un precio para convertirlos en productos web.
+    public record MaterialLibre(String nombre, String descripcion, BigDecimal cantidad, String unidad,
+                                String observaciones, String referencia) {}
+    public record DatosLista(@NotBlank @Size(max=150) String curso,
+                             @NotBlank @Size(max=150) String nombreCatedratico,
+                             @NotNull @FutureOrPresent LocalDate fechaLimite,
+                             @Size(max=2000) String observaciones,
+                             @Size(max=150) String puntoEntregaPreferido) {}
     // Producto encontrado en la web (Amazon, Google Shopping); precio y moneda son solo de referencia.
     public record ProductoWeb(@NotBlank @Size(max=500) String titulo,
                               @NotBlank @Size(max=2000) @Pattern(regexp="https?://\\S+") String url,
@@ -44,11 +52,13 @@ public final class PedidoDtos {
                              @Size(max=2000) String notas) {}
     public record Item(UUID id, ItemPedido.Tipo tipo, Integer articuloId, String descripcion, BigDecimal cantidad,
                        String url, String imagen, String tienda, BigDecimal precioReferencia, String monedaReferencia,
-                       BigDecimal precioUnitario, BigDecimal subtotal) {
+                       BigDecimal precioUnitario, BigDecimal subtotal, String nombreMaterial, String unidad,
+                       String observacionesMaterial, String referenciaMaterial) {
         static Item de(ItemPedido i) {
             return new Item(i.getId(),i.getTipo(),i.getArticuloId(),i.getDescripcion(),i.getCantidad(),i.getUrl(),
                     i.getImagen(),i.getTienda(),i.getPrecioReferencia(),i.getMonedaReferencia(),
-                    i.getPrecioUnitario(),i.getSubtotal());
+                    i.getPrecioUnitario(),i.getSubtotal(),i.getNombreMaterial(),i.getUnidad(),
+                    i.getObservacionesMaterial(),i.getReferenciaMaterial());
         }
     }
     // Los campos de cotización son null mientras la solicitud no se haya cotizado.
