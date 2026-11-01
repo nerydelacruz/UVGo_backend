@@ -57,6 +57,8 @@ El envío ocurre de forma asíncrona después del commit. Sin configuración que
 
 ## Verificación
 
+Al preparar los PR se integró `origin/main` en ambos repositorios. Se conservaron la importación directa de productos del PDF, las sugerencias de catálogo y los dashboards nuevos. Después de resolver la integración pasaron **77 pruebas del backend**, compilación del frontend y ESLint. La extracción de listas usa `/extracciones/materiales`; el flujo directo existente conserva `/extracciones/productos`. `UVGO_IA_ENABLED=true` habilita la extracción de listas y ambas rutas comparten la configuración de clave/modelo de Claude.
+
 - Backend: 70 pruebas aprobadas en H2 aislado. Incluyen todos los campos, cantidad 2.125, reintentos y concurrencia sin duplicados, permisos, validación, cotización y evento de correo. La migración conserva una lista previa y admite el nuevo origen.
 - Frontend: compilación TypeScript/Vite y ESLint. Vite mantiene la advertencia por tamaño del paquete general.
 - Edge con API simulada: formulario, error recuperable sin perder datos, envío, vínculo tras recarga, detalle fuera de primera página, cantidades/unidades, móvil sin desbordamiento y precio editable por administrador. Sin errores JavaScript en el recorrido.

@@ -19,18 +19,24 @@ public final class PedidoDtos {
                              @NotNull @FutureOrPresent LocalDate fechaLimite,
                              @Size(max=2000) String observaciones,
                              @Size(max=150) String puntoEntregaPreferido) {}
-    // Producto encontrado en la web (Amazon, Google Shopping); precio y moneda son solo de referencia.
+    // Producto encontrado en la web (Google Shopping); precio y moneda son solo de referencia.
     public record ProductoWeb(@NotBlank @Size(max=500) String titulo,
                               @NotBlank @Size(max=2000) @Pattern(regexp="https?://\\S+") String url,
                               @Size(max=2000) String imagen,
                               @Size(max=150) String tienda,
                               @DecimalMin("0.00") @Digits(integer=10,fraction=2) BigDecimal precio,
                               @Size(max=10) String moneda) {}
-    // Cada producto viene del catálogo (articuloId) o de la web (web), nunca de ambos.
-    public record Producto(@Positive Integer articuloId, @Valid ProductoWeb web,
+    // Cada producto viene del catálogo (articuloId), de la web (web) o es un texto libre (texto, p. ej. un
+    // material leído de un PDF); solo uno de los tres.
+    // codigo y termino solo acompañan a un texto: ayudan a encontrarlo en el catálogo.
+    public record Producto(@Positive Integer articuloId, @Valid ProductoWeb web, @Size(max=500) String texto,
+                           @Size(max=100) String codigo, @Size(max=200) String termino,
                            @NotNull @Min(1) @Max(999) Integer cantidad) {
-        @JsonIgnore @AssertTrue(message="Indique articuloId o web, uno de los dos")
-        public boolean isOrigenUnico() { return (articuloId==null)!=(web==null); }
+        @JsonIgnore @AssertTrue(message="Indique articuloId, web o texto, uno solo")
+        public boolean isOrigenUnico() {
+            int origenes=(articuloId!=null?1:0)+(web!=null?1:0)+(texto!=null && !texto.isBlank()?1:0);
+            return origenes==1 && (texto==null || !texto.isBlank());
+        }
     }
     public record Solicitud(@NotBlank @Size(max=150) String curso,
                             @NotBlank @Size(max=150) String nombreCatedratico,
@@ -53,12 +59,15 @@ public final class PedidoDtos {
     public record Item(UUID id, ItemPedido.Tipo tipo, Integer articuloId, String descripcion, BigDecimal cantidad,
                        String url, String imagen, String tienda, BigDecimal precioReferencia, String monedaReferencia,
                        BigDecimal precioUnitario, BigDecimal subtotal, String nombreMaterial, String unidad,
-                       String observacionesMaterial, String referenciaMaterial) {
+                       String observacionesMaterial, String referenciaMaterial,
+                       Integer sugerenciaArticuloId, String sugerenciaDescripcion, BigDecimal sugerenciaPrecio,
+                       String sugerenciaMoneda) {
         static Item de(ItemPedido i) {
             return new Item(i.getId(),i.getTipo(),i.getArticuloId(),i.getDescripcion(),i.getCantidad(),i.getUrl(),
                     i.getImagen(),i.getTienda(),i.getPrecioReferencia(),i.getMonedaReferencia(),
                     i.getPrecioUnitario(),i.getSubtotal(),i.getNombreMaterial(),i.getUnidad(),
-                    i.getObservacionesMaterial(),i.getReferenciaMaterial());
+                    i.getObservacionesMaterial(),i.getReferenciaMaterial(),i.getSugerenciaArticuloId(),
+                    i.getSugerenciaDescripcion(),i.getSugerenciaPrecio(),i.getSugerenciaMoneda());
         }
     }
     // Los campos de cotización son null mientras la solicitud no se haya cotizado.
@@ -66,7 +75,8 @@ public final class PedidoDtos {
                           LocalDate fechaLimite, Instant fechaSolicitud, EstadoPedido estado,
                           String observaciones, String puntoEntregaPreferido, List<Item> productos,
                           String monedaCotizacion, BigDecimal cargoServicio, BigDecimal total, String notasCotizacion,
-                          Instant fechaCotizacion, Instant fechaConfirmacion, Comprobante comprobante, Instant fechaPago) {
+                          Instant fechaCotizacion, Instant fechaConfirmacion, Comprobante comprobante, Instant fechaPago,
+                          boolean verificandoStock) {
         public static Detalle de(Pedido p) {
             boolean cotizado=p.getFechaCotizacion()!=null;
             return new Detalle(p.getId(),p.getVersion(),p.getEstudiante().getId(),p.getCurso(),p.getNombreCatedratico(),
@@ -76,7 +86,7 @@ public final class PedidoDtos {
                     p.getFechaCotizacion(),p.getFechaConfirmacion(),
                     p.getComprobanteRuta()==null ? null : new Comprobante(p.getComprobanteNombre(),p.getComprobanteTipo(),
                             p.getComprobanteTamano(),p.getFechaComprobante()),
-                    p.getFechaPago());
+                    p.getFechaPago(),p.isVerificandoCatalogo());
         }
     }
     public record Pagina<T>(List<T> contenido, int pagina, int tamanio, long totalElementos, int totalPaginas) {}

@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-UVGo backend: API REST en Spring Boot 4 / Java 21 para que estudiantes de la UVG pidan artículos (catálogo propio + productos externos de Amazon, SerpApi y BrightData). Código, nombres y mensajes están en español; mantener ese idioma.
+UVGo backend: API REST en Spring Boot 4 / Java 21 para que estudiantes de la UVG pidan artículos (catálogo propio + productos externos de SerpApi y BrightData). Código, nombres y mensajes están en español; mantener ese idioma.
 
 ## Comandos
 
@@ -25,18 +25,18 @@ docker compose up -d                  # PostgreSQL 17 local en 127.0.0.1:5432 (r
 
 Hay **dos estilos conviviendo** en el mismo paquete raíz `com.UVGgo.backend`; respetar el estilo del módulo que se toque:
 
-1. **Capas (código de David)** — artículos, búsqueda externa, Amazon y el módulo `/pedidos` original:
+1. **Capas (código de David)** — artículos, búsqueda externa y el módulo `/pedidos` original:
    `web/controller` → `domain/service` → `domain/repository` (interfaz) → `persistence/*EntityRepository` (impl) → `persistence/crud` (Spring Data) + `persistence/entity`, con mappers MapStruct en `persistence/mapper`. El dominio expone records (`domain/Articulo`, `domain/pedidos/Pedido`). Rutas públicas sin `/api/v1`. Doc del módulo: `docs/pedidos.md`. Los kits se eliminaron (V9); no reintroducirlos.
 2. **Por feature (`auth`, `usuario`, `pedido`)** — entidades JPA usadas directamente por el servicio, DTOs como records anidados (`AuthDtos`, `PedidoDtos`), rutas bajo `/api/v1/**` que exigen JWT.
    - `usuario.Usuario` es abstracta con herencia `SINGLE_TABLE` (`Estudiante`, `Administrador`); `obtenerRol()` alimenta el claim `rol`.
    - El paquete `pedido` (singular) son las **solicitudes** del estudiante (tabla `solicitudes` + `items_pedido`, IDs UUID), distinto del módulo `domain/pedidos` (tabla `pedidos` + `pedido_detalles`, IDs enteros). El bean se llama `solicitudPedidoController` para no chocar con el otro `PedidoController`.
-   - Flujo de cotización (V13): el estudiante crea una solicitud con `productos` (cada uno `articuloId` del catálogo **o** `web` con título/URL; se guarda una copia en `items_pedido`) → el admin `POST /{id}/cotizacion` pone `precioUnitario` por ítem + `cargoServicio` (en GTQ) → `COTIZADO` → el estudiante `POST /{id}/aceptacion` → `CONFIRMADO` (ya es pedido) o rechaza con `/cancelacion`. Ya confirmado, el estudiante sube el comprobante de pago (`PUT /{id}/comprobante`, multipart `archivo` + `version`; PDF/PNG/JPG ≤5 MB, tipo detectado por contenido) y el admin lo descarga (`GET /{id}/comprobante`) y registra el pago (`POST /{id}/pago`) → `PAGADO`. Cada paso envía correo (`CorreosPedido`).
+   - Flujo de cotización (V13): el estudiante crea una solicitud con `productos` (cada uno `articuloId` del catálogo, `web` con título/URL **o** `texto` libre, p. ej. un material leído de un PDF (V16); se guarda una copia en `items_pedido`) → el admin `POST /{id}/cotizacion` pone `precioUnitario` por ítem + `cargoServicio` (en GTQ) → `COTIZADO` → el estudiante `POST /{id}/aceptacion` → `CONFIRMADO` (ya es pedido) o rechaza con `/cancelacion`. Ya confirmado, el estudiante sube el comprobante de pago (`PUT /{id}/comprobante`, multipart `archivo` + `version`; PDF/PNG/JPG ≤5 MB, tipo detectado por contenido) y el admin lo descarga (`GET /{id}/comprobante`) y registra el pago (`POST /{id}/pago`) → `PAGADO`. Cada paso envía correo (`CorreosPedido`).
 
 **Seguridad (`config/SeguridadConfig`)**: resource server JWT HS256 firmado por la propia app (issuer `uvgo`). Cada token tiene un `jti` que corresponde a una fila en `sesiones`; el decoder valida en cada request que la sesión esté vigente y que el usuario siga activo con el mismo rol, así que logout = revocar sesión. Autorización por rol con `@PreAuthorize("hasRole('ESTUDIANTE'|'ADMINISTRADOR')")`. Registro solo con correo del dominio `INSTITUTIONAL_DOMAIN`; contraseñas BCrypt con límite de 72 bytes.
 
 **Errores**: lanzar `api.ApiException(HttpStatus, mensaje)`; `api.ErroresApi` convierte todo a `ProblemDetail` (validación → 400, integridad → 409, optimistic lock → 409). Jackson rechaza campos desconocidos (`fail-on-unknown-properties=true`), así que los DTOs deben declarar todo lo que acepten.
 
-**Integraciones externas** (`domain/service`): `AmazonProductService` usa el SDK Creators API desde JARs locales en `libs/creatorsapi-java-sdk/` (config en `config/AmazonConfig`/`AmazonProperties`); `BusquedaExternaService` usa SerpApi (Google Shopping); `BrightDataService` importa productos scrapeados a `articulos` (`ResultadoImportacion`).
+**Integraciones externas** (`domain/service`): `BusquedaExternaService` usa SerpApi (Google Shopping); `BrightDataService` importa productos scrapeados a `articulos` (`ResultadoImportacion`).
 
 **Correo (`correo`)**: Azure Communication Services (`azure-communication-email`, con el cliente HTTP del JDK en lugar de Netty). Los servicios publican un `Correo` como evento (`ApplicationEventPublisher`) y `CorreoService` lo envía `@Async` tras el commit; un fallo de Azure solo se registra en el log. Sin `AZURE_EMAIL_CONNECTION_STRING`/`AZURE_EMAIL_SENDER` no envía nada (así corren las pruebas). Textos de solicitudes en `pedido/CorreosPedido`.
 
