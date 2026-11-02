@@ -22,6 +22,8 @@ dependencies {
 	// Extracción de productos desde PDF: el SDK manda el PDF completo a Claude
 	implementation 'com.anthropic:anthropic-java:2.34.0'
 	implementation 'org.springframework.boot:spring-boot-starter-webmvc'
+	// Ubicación del repartidor en tiempo real (STOMP sobre WebSocket)
+	implementation 'org.springframework.boot:spring-boot-starter-websocket'
 	implementation 'org.springframework.boot:spring-boot-starter-validation'
 	implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
 	implementation 'org.springframework.boot:spring-boot-starter-security'

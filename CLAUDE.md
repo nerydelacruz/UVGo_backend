@@ -34,6 +34,8 @@ Hay **dos estilos conviviendo** en el mismo paquete raíz `com.UVGgo.backend`; r
 
 **Seguridad (`config/SeguridadConfig`)**: resource server JWT HS256 firmado por la propia app (issuer `uvgo`). Cada token tiene un `jti` que corresponde a una fila en `sesiones`; el decoder valida en cada request que la sesión esté vigente y que el usuario siga activo con el mismo rol, así que logout = revocar sesión. Autorización por rol con `@PreAuthorize("hasRole('ESTUDIANTE'|'ADMINISTRADOR')")`. Registro solo con correo del dominio `INSTITUTIONAL_DOMAIN`; contraseñas BCrypt con límite de 72 bytes.
 
+**Ubicación en vivo (`ubicacion`, `config/WebSocketConfig`)**: STOMP sobre WebSocket en `/ws`; el JWT se valida en el frame CONNECT (`AutenticacionStomp`) y solo administradores publican/escuchan. Detalle y limitaciones en `docs/ubicacion-tiempo-real.md`.
+
 **Errores**: lanzar `api.ApiException(HttpStatus, mensaje)`; `api.ErroresApi` convierte todo a `ProblemDetail` (validación → 400, integridad → 409, optimistic lock → 409). Jackson rechaza campos desconocidos (`fail-on-unknown-properties=true`), así que los DTOs deben declarar todo lo que acepten.
 
 **Integraciones externas** (`domain/service`): `BusquedaExternaService` usa SerpApi (Google Shopping); `BrightDataService` importa productos scrapeados a `articulos` (`ResultadoImportacion`).
