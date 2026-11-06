@@ -34,6 +34,8 @@ Hay **dos estilos conviviendo** en el mismo paquete raíz `com.UVGgo.backend`; r
 
 **Seguridad (`config/SeguridadConfig`)**: resource server JWT HS256 firmado por la propia app (issuer `uvgo`). Cada token tiene un `jti` que corresponde a una fila en `sesiones`; el decoder valida en cada request que la sesión esté vigente y que el usuario siga activo con el mismo rol, así que logout = revocar sesión. Autorización por rol con `@PreAuthorize("hasRole('ESTUDIANTE'|'ADMINISTRADOR')")`. Registro solo con correo del dominio `INSTITUTIONAL_DOMAIN`; contraseñas BCrypt con límite de 72 bytes.
 
+**Pilotos y ubicación en vivo (`piloto`, `ubicacion`, `config/WebSocketConfig`)**: el admin asigna un piloto a un pedido confirmado (`POST /api/v1/pedidos/{id}/piloto`, tabla `pilotos`, V20) y el simulador de Webtrack lo recibe y publica su posición por STOMP sobre WebSocket en `/ws`. Las credenciales van en el frame CONNECT (`AutenticacionStomp`): JWT para administradores, `X-Piloto-Id` + `SIMULADOR_CLAVE` para pilotos. Detalle y limitaciones en `docs/ubicacion-tiempo-real.md`.
+
 **Errores**: lanzar `api.ApiException(HttpStatus, mensaje)`; `api.ErroresApi` convierte todo a `ProblemDetail` (validación → 400, integridad → 409, optimistic lock → 409). Jackson rechaza campos desconocidos (`fail-on-unknown-properties=true`), así que los DTOs deben declarar todo lo que acepten.
 
 **Integraciones externas** (`domain/service`): `BusquedaExternaService` usa SerpApi (Google Shopping); `BrightDataService` importa productos scrapeados a `articulos` (`ResultadoImportacion`).

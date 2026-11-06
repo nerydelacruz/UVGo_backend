@@ -2,6 +2,7 @@ package com.UVGgo.backend.pedido;
 
 import com.UVGgo.backend.api.ApiException;
 import com.UVGgo.backend.domain.Articulo;
+import com.UVGgo.backend.piloto.Piloto;
 import com.UVGgo.backend.usuario.Estudiante;
 import jakarta.persistence.*;
 import org.springframework.http.HttpStatus;
@@ -12,6 +13,8 @@ import java.util.*;
 @Entity
 @Table(name="solicitudes")
 public class Pedido {
+    // Estados en los que un pedido confirmado todavía se puede entregar (y por tanto tener piloto)
+    public static final Set<EstadoPedido> ESTADOS_ENTREGABLES=EnumSet.of(EstadoPedido.CONFIRMADO,EstadoPedido.PAGADO,EstadoPedido.EN_COMPRA,EstadoPedido.LISTO);
     @Id private UUID id=UUID.randomUUID();
     @Version private long version;
     @ManyToOne(fetch=FetchType.LAZY, optional=false) @JoinColumn(name="estudiante_id") private Estudiante estudiante;
@@ -33,6 +36,7 @@ public class Pedido {
     private Long comprobanteTamano;
     private Instant fechaComprobante;
     private Instant fechaPago;
+    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="piloto_id") private Piloto piloto;
     // Desde cuándo se buscan sus materiales de texto en el catálogo; null si no hay búsqueda en curso
     private Instant busquedaCatalogoDesde;
     @OneToMany(mappedBy="pedido", cascade=CascadeType.ALL, orphanRemoval=true)
@@ -88,6 +92,16 @@ public class Pedido {
         estado=EstadoPedido.PAGADO;
         fechaPago=fechaActualizacion=Instant.now();
     }
+    // El administrador elige quién entrega el pedido; se puede cambiar hasta que se entregue.
+    public void asignarPiloto(Piloto piloto) {
+        if (!ESTADOS_ENTREGABLES.contains(estado)) throw ApiException.conflicto("Solo se asigna piloto a un pedido confirmado que aún no se entrega");
+        this.piloto=piloto; fechaActualizacion=Instant.now();
+    }
+    public void quitarPiloto() {
+        if (piloto==null) return;
+        if (!ESTADOS_ENTREGABLES.contains(estado)) throw ApiException.conflicto("El pedido ya no admite cambios de piloto");
+        piloto=null; fechaActualizacion=Instant.now();
+    }
     public BigDecimal getTotal() {
         if (fechaCotizacion==null) return null;
         return items.stream().map(ItemPedido::getSubtotal).reduce(cargoServicio,BigDecimal::add);
@@ -108,6 +122,8 @@ public class Pedido {
     }
     public long getVersion() { return version; }
     public Estudiante getEstudiante() { return estudiante; }
+    public Piloto getPiloto() { return piloto; }
+    public Instant getFechaActualizacion() { return fechaActualizacion; }
     public String getCurso() { return curso; }
     public String getNombreCatedratico() { return nombreCatedratico; }
     public LocalDate getFechaLimite() { return fechaLimite; }

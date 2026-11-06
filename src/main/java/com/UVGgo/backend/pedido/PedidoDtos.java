@@ -40,6 +40,7 @@ public final class PedidoDtos {
     public record Cancelacion(@NotNull @PositiveOrZero Long version) {}
     public record Aceptacion(@NotNull @PositiveOrZero Long version) {}
     public record Pago(@NotNull @PositiveOrZero Long version) {}
+    public record PilotoResumen(UUID id, String nombre) {}
     public record Comprobante(String nombre, String tipo, long tamano, Instant fecha) {}
     public record Archivo(String nombre, String tipo, byte[] contenido) {}
     public record PrecioItem(@NotNull UUID itemId,
@@ -60,13 +61,14 @@ public final class PedidoDtos {
                     i.getSugerenciaPrecio(),i.getSugerenciaMoneda());
         }
     }
+    // piloto es null mientras el pedido no tenga conductor asignado.
     // Los campos de cotización son null mientras la solicitud no se haya cotizado.
     public record Detalle(UUID id, long version, UUID estudianteId, String curso, String nombreCatedratico,
                           LocalDate fechaLimite, Instant fechaSolicitud, EstadoPedido estado,
                           String observaciones, String puntoEntregaPreferido, List<Item> productos,
                           String monedaCotizacion, BigDecimal cargoServicio, BigDecimal total, String notasCotizacion,
                           Instant fechaCotizacion, Instant fechaConfirmacion, Comprobante comprobante, Instant fechaPago,
-                          boolean verificandoStock) {
+                          boolean verificandoStock, PilotoResumen piloto) {
         public static Detalle de(Pedido p) {
             boolean cotizado=p.getFechaCotizacion()!=null;
             return new Detalle(p.getId(),p.getVersion(),p.getEstudiante().getId(),p.getCurso(),p.getNombreCatedratico(),
@@ -76,7 +78,8 @@ public final class PedidoDtos {
                     p.getFechaCotizacion(),p.getFechaConfirmacion(),
                     p.getComprobanteRuta()==null ? null : new Comprobante(p.getComprobanteNombre(),p.getComprobanteTipo(),
                             p.getComprobanteTamano(),p.getFechaComprobante()),
-                    p.getFechaPago(),p.isVerificandoCatalogo());
+                    p.getFechaPago(),p.isVerificandoCatalogo(),
+                    p.getPiloto()==null ? null : new PilotoResumen(p.getPiloto().getId(),p.getPiloto().getNombre()));
         }
     }
     public record Pagina<T>(List<T> contenido, int pagina, int tamanio, long totalElementos, int totalPaginas) {}

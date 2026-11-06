@@ -60,6 +60,8 @@ public class SeguridadConfig {
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
                         .requestMatchers(HttpMethod.POST,"/api/v1/auth/registro","/api/v1/auth/login").permitAll()
+                        // El WebSocket se autentica con el JWT del frame CONNECT de STOMP (ver AutenticacionStomp).
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html").permitAll()
                         // Usuarios y solicitudes piden sesión; artículos, pedidos y búsquedas siguen públicos.
                         .requestMatchers("/api/v1/**").authenticated()
