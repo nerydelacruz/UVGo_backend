@@ -3,7 +3,6 @@ package com.UVGgo.backend.config;
 import com.UVGgo.backend.piloto.AccesoPiloto;
 import java.security.Principal;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -13,7 +12,6 @@ import org.springframework.messaging.MessageDeliveryException;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
 import org.springframework.messaging.support.ChannelInterceptor;
 import org.springframework.messaging.support.MessageHeaderAccessor;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -22,9 +20,8 @@ import org.springframework.security.oauth2.server.resource.authentication.JwtAut
 
 /**
  * Autenticación y autorización del WebSocket. El navegador no puede mandar Authorization al abrir un WebSocket,
- * así que las credenciales viajan en el frame CONNECT de STOMP:
- *  - Administrador: Authorization: Bearer (el mismo JWT de la API; firma, vencimiento, sesión y usuario activo).
- *  - Piloto (simulador): X-Piloto-Id y X-Piloto-Clave (la clave SIMULADOR_CLAVE del servidor).
+ * así que el JWT de la API viaja en el frame CONNECT de STOMP (Authorization: Bearer). Se valida igual que en
+ * REST: firma, vencimiento, sesión vigente y usuario activo con el mismo rol.
  * Luego, cada rol solo puede usar sus destinos:
  *  - Administrador: escuchar /topic/pedidos/{id}/ubicacion.
  *  - Piloto: escuchar sus asignaciones (/app/pilotos/{suId}/pedidos y /topic/pilotos/{suId}/asignaciones) y publicar
@@ -55,20 +52,10 @@ public class AutenticacionStomp implements ChannelInterceptor {
     }
 
     private Principal autenticar(StompHeaderAccessor h) {
-        String bearer=h.getFirstNativeHeader("Authorization");
-        if (bearer!=null) return autenticarAdministrador(bearer);
-        String pilotoId=h.getFirstNativeHeader("X-Piloto-Id");
-        if (pilotoId!=null) {
-            Optional<UUID> id=pilotos.autenticar(pilotoId,h.getFirstNativeHeader("X-Piloto-Clave"));
-            if (id.isEmpty()) throw new MessageDeliveryException("Credenciales de piloto invalidas");
-            return UsernamePasswordAuthenticationToken.authenticated(id.get().toString(),null,List.of(new SimpleGrantedAuthority(PILOTO)));
-        }
-        throw new MessageDeliveryException("Autenticacion requerida");
-    }
-
-    private Principal autenticarAdministrador(String header) {
-        if (!header.startsWith("Bearer ")) throw new MessageDeliveryException("Autenticacion requerida");
+        String header=h.getFirstNativeHeader("Authorization");
+        if (header==null || !header.startsWith("Bearer ")) throw new MessageDeliveryException("Autenticacion requerida");
         try {
+            // El nombre del principal es el subject del JWT: el id del usuario (para un piloto, su id de piloto)
             Jwt jwt=decoder.decode(header.substring(7).strip());
             return new JwtAuthenticationToken(jwt,List.of(new SimpleGrantedAuthority("ROLE_"+jwt.getClaimAsString("rol"))));
         } catch (JwtException e) {

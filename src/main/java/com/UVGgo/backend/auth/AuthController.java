@@ -15,9 +15,15 @@ public class AuthController {
     @PostMapping("/auth/registro") @ResponseStatus(HttpStatus.CREATED)
     @io.swagger.v3.oas.annotations.security.SecurityRequirements
     public AuthDtos.Perfil registro(@Valid @RequestBody AuthDtos.Registro r) { return auth.registrar(r); }
+    @PostMapping("/auth/registro-piloto") @ResponseStatus(HttpStatus.CREATED)
+    @io.swagger.v3.oas.annotations.security.SecurityRequirements
+    public AuthDtos.Perfil registroPiloto(@Valid @RequestBody AuthDtos.RegistroPiloto r) { return auth.registrarPiloto(r); }
     @PostMapping("/auth/login")
     @io.swagger.v3.oas.annotations.security.SecurityRequirements
     public AuthDtos.Token login(@Valid @RequestBody AuthDtos.Login r) { return auth.login(r); }
+    /** Requiere un token vigente; devuelve otro con el plazo completo. */
+    @PostMapping("/auth/renovacion")
+    public AuthDtos.Token renovar(@AuthenticationPrincipal Jwt jwt) { return auth.renovar(jwt); }
     @PostMapping("/auth/logout") @ResponseStatus(HttpStatus.NO_CONTENT)
     public void logout(@AuthenticationPrincipal Jwt jwt) { auth.logout(jwt); }
     @GetMapping("/usuarios/me")

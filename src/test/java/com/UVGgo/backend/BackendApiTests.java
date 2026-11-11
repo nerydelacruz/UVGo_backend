@@ -114,6 +114,19 @@ class BackendApiTests {
         mvc.perform(post("/api/v1/auth/logout").header("Authorization","Bearer "+token)).andExpect(status().isNoContent());
         mvc.perform(get("/api/v1/usuarios/me").header("Authorization","Bearer "+token)).andExpect(status().isUnauthorized());
     }
+    @Test void renovacionEntregaOtroTokenValidoYExigeSesion() throws Exception {
+        String token=cuenta();
+        String nuevo=json.readTree(mvc.perform(post("/api/v1/auth/renovacion").header("Authorization","Bearer "+token))
+                .andExpect(status().isOk()).andExpect(jsonPath("usuario.rol").value("ESTUDIANTE"))
+                .andReturn().getResponse().getContentAsString()).get("accessToken").asText();
+        org.junit.jupiter.api.Assertions.assertNotEquals(token,nuevo);
+        mvc.perform(get("/api/v1/usuarios/me").header("Authorization","Bearer "+nuevo)).andExpect(status().isOk());
+        // Cada token tiene su propia sesión: cerrar la nueva no afecta a la anterior, y sin token no se renueva
+        mvc.perform(post("/api/v1/auth/logout").header("Authorization","Bearer "+nuevo)).andExpect(status().isNoContent());
+        mvc.perform(post("/api/v1/auth/renovacion").header("Authorization","Bearer "+nuevo)).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/v1/usuarios/me").header("Authorization","Bearer "+token)).andExpect(status().isOk());
+        mvc.perform(post("/api/v1/auth/renovacion")).andExpect(status().isUnauthorized());
+    }
     @Test void contactoNoCambiaCredencialInstitucional() throws Exception {
         String token=cuenta();
         mvc.perform(patch("/api/v1/usuarios/me").header("Authorization","Bearer "+token).contentType(MediaType.APPLICATION_JSON)

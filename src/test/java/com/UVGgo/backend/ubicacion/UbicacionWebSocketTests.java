@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 import com.UVGgo.backend.pedido.Pedido;
+import com.UVGgo.backend.piloto.Piloto;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -15,12 +16,13 @@ class UbicacionWebSocketTests extends WebSocketPruebas {
     private UbicacionDtos.Posicion posicion() { return new UbicacionDtos.Posicion(14.6075,-90.488,45.0); }
 
     @Test void elPilotoAsignadoPublicaYElAdministradorRecibeLaPosicion() throws Exception {
-        Pedido p=pedidoConfirmado(); p.asignarPiloto(piloto()); pedidos.saveAndFlush(p);
+        Piloto piloto=piloto();
+        Pedido p=pedidoConfirmado(); p.asignarPiloto(piloto); pedidos.saveAndFlush(p);
         String token=loginAdmin();
         StompSession admin=conectarAdmin(token).sesion();
         var recibida=escuchar(admin,"/topic/pedidos/"+p.getId()+"/ubicacion",UbicacionDtos.Ubicacion.class);
 
-        conectarPiloto().sesion().send("/app/pedidos/"+p.getId()+"/ubicacion",posicion());
+        conectarPiloto(piloto).sesion().send("/app/pedidos/"+p.getId()+"/ubicacion",posicion());
 
         var u=recibida.get(5,TimeUnit.SECONDS);
         assertThat(u.latitud()).isEqualTo(14.6075);
@@ -32,7 +34,7 @@ class UbicacionWebSocketTests extends WebSocketPruebas {
     }
     @Test void unPilotoNoPuedePublicarEnUnPedidoQueNoTieneAsignado() throws Exception {
         Pedido p=pedidoConfirmado(); // sin piloto
-        StompSession piloto=conectarPiloto().sesion();
+        StompSession piloto=conectarPiloto(piloto()).sesion();
         var admin=conectarAdmin(loginAdmin()).sesion();
         var recibida=escuchar(admin,"/topic/pedidos/"+p.getId()+"/ubicacion",UbicacionDtos.Ubicacion.class);
         piloto.send("/app/pedidos/"+p.getId()+"/ubicacion",posicion());
@@ -65,13 +67,16 @@ class UbicacionWebSocketTests extends WebSocketPruebas {
         assertThat(cliente.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
         assertThat(cliente.conectado).isNotDone();
     }
-    @Test void unPilotoConClaveIncorrectaONoExistenteNoSeConecta() throws Exception {
-        var mala=conectarPiloto(OSCAR,"clave-incorrecta-0123456789");
-        assertThat(mala.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
-        assertThat(mala.conectado).isNotDone();
-        var ajeno=conectarPiloto(UUID.randomUUID(),CLAVE);
-        assertThat(ajeno.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
-        assertThat(ajeno.conectado).isNotDone();
+    @Test void unPilotoNoPuedeEscucharLasAsignacionesDeOtro() throws Exception {
+        var cliente=conectarPiloto(piloto());
+        cliente.sesion().subscribe("/topic/pilotos/"+piloto().getId()+"/asignaciones",new org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter() {});
+        assertThat(cliente.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
+    }
+    @Test void unEstudianteNoPuedePublicarPosiciones() throws Exception {
+        Pedido p=pedidoConfirmado(); p.asignarPiloto(piloto()); pedidos.saveAndFlush(p);
+        var estudiante=conectarConToken(loginEstudiante());
+        estudiante.sesion().send("/app/pedidos/"+p.getId()+"/ubicacion",posicion());
+        assertThat(estudiante.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
     }
     @Test void unEstudianteNoPuedeEscucharLaUbicacion() throws Exception {
         var cliente=conectarAdmin(loginEstudiante());
@@ -79,7 +84,7 @@ class UbicacionWebSocketTests extends WebSocketPruebas {
         assertThat(cliente.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
     }
     @Test void unPilotoNoPuedeEscucharLaUbicacion() throws Exception {
-        var cliente=conectarPiloto();
+        var cliente=conectarPiloto(piloto());
         cliente.sesion().subscribe("/topic/pedidos/"+UUID.randomUUID()+"/ubicacion",new org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter() {});
         assertThat(cliente.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
     }
@@ -88,7 +93,4 @@ class UbicacionWebSocketTests extends WebSocketPruebas {
         cliente.sesion().subscribe("/topic/otra-cosa",new org.springframework.messaging.simp.stomp.StompSessionHandlerAdapter() {});
         assertThat(cliente.rechazo.get(5,TimeUnit.SECONDS)).isNotNull();
     }
-
-    @org.springframework.beans.factory.annotation.Autowired com.UVGgo.backend.piloto.PilotoRepository pilotos;
-    private com.UVGgo.backend.piloto.Piloto piloto() { return pilotos.findById(OSCAR).orElseThrow(); }
 }

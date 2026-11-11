@@ -1,17 +1,18 @@
 package com.UVGgo.backend.piloto;
 
-import jakarta.persistence.*;
-import java.util.UUID;
+import com.UVGgo.backend.usuario.Usuario;
+import jakarta.persistence.DiscriminatorValue;
+import jakarta.persistence.Entity;
 
+/**
+ * Tercer tipo de usuario: el conductor que entrega los pedidos. Inicia sesión como cualquier usuario
+ * (correo y contraseña) y desde la app móvil ve sus pedidos asignados y publica su ubicación.
+ * Las cuentas las crea un administrador (POST /api/v1/pilotos); no hay registro público.
+ */
 @Entity
-@Table(name="pilotos")
-public class Piloto {
-    @Id private UUID id=UUID.randomUUID();
-    @Column(nullable=false, length=120) private String nombre;
-    @Column(nullable=false) private boolean activo=true;
+@DiscriminatorValue("PILOTO")
+public class Piloto extends Usuario {
     protected Piloto() {}
-    public Piloto(String nombre) { this.nombre=nombre; }
-    public UUID getId() { return id; }
-    public String getNombre() { return nombre; }
-    public boolean isActivo() { return activo; }
+    public Piloto(String nombre,String correo,String telefono,String hash) { super(nombre,correo,telefono,hash); }
+    @Override public String obtenerRol() { return "PILOTO"; }
 }

@@ -19,7 +19,7 @@ docker compose up -d                  # PostgreSQL 17 local en 127.0.0.1:5432 (r
 - Puerto: `dev` = 8070 (base PostgreSQL compartida en Azure), `local` = 8080 (usa `DB_URL`/`DB_USER`/`DB_PASSWORD`).
 - Las claves se leen de `.env` (ver `.env.example`) vía `spring.config.import`. `JWT_SECRET` es obligatorio: Base64 de ≥32 bytes (`openssl rand -base64 32`).
 - `src/main/resources/application*.properties` está en `.gitignore`: los cambios ahí no llegan al equipo; si se agrega una propiedad nueva, avisar y reflejarla en `.env.example`.
-- Perfil `demo` (`DatosDemo`) crea cuentas ficticias admin/estudiante; requiere `DEMO_PASSWORD`.
+- Perfil `demo` (`DatosDemo`) crea cuentas ficticias admin/estudiante/piloto; requiere `DEMO_PASSWORD`.
 
 ## Arquitectura
 
@@ -27,14 +27,14 @@ Hay **dos estilos conviviendo** en el mismo paquete raíz `com.UVGgo.backend`; r
 
 1. **Capas (código de David)** — artículos, búsqueda externa y el módulo `/pedidos` original:
    `web/controller` → `domain/service` → `domain/repository` (interfaz) → `persistence/*EntityRepository` (impl) → `persistence/crud` (Spring Data) + `persistence/entity`, con mappers MapStruct en `persistence/mapper`. El dominio expone records (`domain/Articulo`, `domain/pedidos/Pedido`). Rutas públicas sin `/api/v1`. Doc del módulo: `docs/pedidos.md`. Los kits se eliminaron (V9); no reintroducirlos.
-2. **Por feature (`auth`, `usuario`, `pedido`)** — entidades JPA usadas directamente por el servicio, DTOs como records anidados (`AuthDtos`, `PedidoDtos`), rutas bajo `/api/v1/**` que exigen JWT.
-   - `usuario.Usuario` es abstracta con herencia `SINGLE_TABLE` (`Estudiante`, `Administrador`); `obtenerRol()` alimenta el claim `rol`.
+2. **Por feature (`auth`, `usuario`, `pedido`, `piloto`)** — entidades JPA usadas directamente por el servicio, DTOs como records anidados (`AuthDtos`, `PedidoDtos`), rutas bajo `/api/v1/**` que exigen JWT.
+   - `usuario.Usuario` es abstracta con herencia `SINGLE_TABLE` (`Estudiante`, `Administrador`, `piloto.Piloto`); `obtenerRol()` alimenta el claim `rol`.
    - El paquete `pedido` (singular) son las **solicitudes** del estudiante (tabla `solicitudes` + `items_pedido`, IDs UUID), distinto del módulo `domain/pedidos` (tabla `pedidos` + `pedido_detalles`, IDs enteros). El bean se llama `solicitudPedidoController` para no chocar con el otro `PedidoController`.
    - Flujo de cotización (V13): el estudiante crea una solicitud con `productos` (cada uno `articuloId` del catálogo, `web` con título/URL **o** `texto` libre, p. ej. un material leído de un PDF (V16); se guarda una copia en `items_pedido`) → el admin `POST /{id}/cotizacion` pone `precioUnitario` por ítem + `cargoServicio` (en GTQ) → `COTIZADO` → el estudiante `POST /{id}/aceptacion` → `CONFIRMADO` (ya es pedido) o rechaza con `/cancelacion`. Ya confirmado, el estudiante sube el comprobante de pago (`PUT /{id}/comprobante`, multipart `archivo` + `version`; PDF/PNG/JPG ≤5 MB, tipo detectado por contenido) y el admin lo descarga (`GET /{id}/comprobante`) y registra el pago (`POST /{id}/pago`) → `PAGADO`. Cada paso envía correo (`CorreosPedido`).
 
-**Seguridad (`config/SeguridadConfig`)**: resource server JWT HS256 firmado por la propia app (issuer `uvgo`). Cada token tiene un `jti` que corresponde a una fila en `sesiones`; el decoder valida en cada request que la sesión esté vigente y que el usuario siga activo con el mismo rol, así que logout = revocar sesión. Autorización por rol con `@PreAuthorize("hasRole('ESTUDIANTE'|'ADMINISTRADOR')")`. Registro solo con correo del dominio `INSTITUTIONAL_DOMAIN`; contraseñas BCrypt con límite de 72 bytes.
+**Seguridad (`config/SeguridadConfig`)**: resource server JWT HS256 firmado por la propia app (issuer `uvgo`). Cada token tiene un `jti` que corresponde a una fila en `sesiones`; el decoder valida en cada request que la sesión esté vigente y que el usuario siga activo con el mismo rol, así que logout = revocar sesión. `POST /api/v1/auth/renovacion` cambia un token vigente por otro con el plazo completo (lo usa la app móvil; la sesión anterior vence sola). Autorización por rol con `@PreAuthorize("hasRole('ESTUDIANTE'|'ADMINISTRADOR')")`. Registro de estudiantes solo con correo del dominio `INSTITUTIONAL_DOMAIN` (los pilotos usan cualquier correo); contraseñas BCrypt con límite de 72 bytes.
 
-**Pilotos y ubicación en vivo (`piloto`, `ubicacion`, `config/WebSocketConfig`)**: el admin asigna un piloto a un pedido confirmado (`POST /api/v1/pedidos/{id}/piloto`, tabla `pilotos`, V20) y el simulador de Webtrack lo recibe y publica su posición por STOMP sobre WebSocket en `/ws`. Las credenciales van en el frame CONNECT (`AutenticacionStomp`): JWT para administradores, `X-Piloto-Id` + `SIMULADOR_CLAVE` para pilotos. Detalle y limitaciones en `docs/ubicacion-tiempo-real.md`.
+**Pilotos y ubicación en vivo (`piloto`, `ubicacion`, `config/WebSocketConfig`)**: el piloto es el tercer tipo de usuario (`piloto.Piloto extends Usuario`, rol `PILOTO`); su cuenta la crea él mismo desde la app (`POST /api/v1/auth/registro-piloto`, público, cualquier correo) o un administrador (`POST /api/v1/pilotos`), y entra por `/auth/login` como cualquiera. El admin lo asigna a un pedido confirmado (`POST /api/v1/pedidos/{id}/piloto`, columna `solicitudes.piloto_usuario_id`, V21) y la app móvil del piloto recibe la asignación y publica su posición por STOMP sobre WebSocket en `/ws`. Todos los roles se autentican con su JWT en el frame CONNECT (`AutenticacionStomp`). El acceso del simulador con `SIMULADOR_CLAVE` se eliminó; la tabla `pilotos` y `solicitudes.piloto_id` de V20 quedan sin uso (no borrarlas sin consultar). Detalle y limitaciones en `docs/ubicacion-tiempo-real.md`.
 
 **Errores**: lanzar `api.ApiException(HttpStatus, mensaje)`; `api.ErroresApi` convierte todo a `ProblemDetail` (validación → 400, integridad → 409, optimistic lock → 409). Jackson rechaza campos desconocidos (`fail-on-unknown-properties=true`), así que los DTOs deben declarar todo lo que acepten.
 
@@ -46,7 +46,7 @@ Hay **dos estilos conviviendo** en el mismo paquete raíz `com.UVGgo.backend`; r
 
 ## Base de datos y Flyway
 
-- Migraciones en `src/main/resources/db/migration`. La base de Azure (perfil `dev`) es **compartida con el equipo** y tiene V4–V8 aplicadas cuyos archivos no están en el repo; por eso `spring.flyway.ignore-migration-patterns=*:missing`.
+- Migraciones en `src/main/resources/db/migration` (SQL) y, cuando el SQL no puede ser portable entre PostgreSQL y H2, en `src/main/java/db/migration` (Java, p. ej. V21). La base de Azure (perfil `dev`) es **compartida con el equipo** y tiene V4–V8 aplicadas cuyos archivos no están en el repo; por eso `spring.flyway.ignore-migration-patterns=*:missing`.
 - Antes de crear una migración, usar el siguiente número libre según `flyway_schema_history` en Azure (no reutilizar números de V4–V8 aunque falten en el repo). Nunca editar una migración ya aplicada.
 - Cambios destructivos (DROP, borrar columnas/datos) en la base compartida se consultan antes con el usuario.
 - Las pruebas usan H2 en modo PostgreSQL con las mismas migraciones: el SQL debe ser compatible con ambos.

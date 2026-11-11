@@ -4,6 +4,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.UVGgo.backend.pedido.*;
+import com.UVGgo.backend.piloto.Piloto;
 import com.UVGgo.backend.usuario.*;
 import java.lang.reflect.Type;
 import java.math.BigDecimal;
@@ -27,14 +28,11 @@ import org.springframework.web.socket.messaging.WebSocketStompClient;
 import tools.jackson.databind.ObjectMapper;
 
 /** Utilidades para probar el WebSocket y la asignación de pilotos de punta a punta (servidor real, cliente STOMP). */
-@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT, properties="SIMULADOR_CLAVE=clave-de-prueba-0123456789")
+@SpringBootTest(webEnvironment=SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 abstract class WebSocketPruebas {
     static final String PASSWORD="Prueba-local-123!";
-    static final String CLAVE="clave-de-prueba-0123456789";
-    /** Piloto Oscar, sembrado por la migración V20. */
-    static final UUID OSCAR=UUID.fromString("00000000-0000-4000-8000-000000000001");
     @LocalServerPort int puerto;
     @Autowired MockMvc mvc;
     @Autowired ObjectMapper json;
@@ -52,6 +50,11 @@ abstract class WebSocketPruebas {
     Estudiante estudiante() {
         return usuarios.saveAndFlush(new Estudiante("Estudiante ficticio",correo(),"55550000",passwords.encode(PASSWORD),
                 Long.toUnsignedString(UUID.randomUUID().getMostSignificantBits()),"Carrera de prueba"));
+    }
+    /** Cuenta de piloto nueva (usuario de tipo PILOTO). */
+    Piloto piloto() { return piloto("Piloto ficticio"); }
+    Piloto piloto(String nombre) {
+        return usuarios.saveAndFlush(new Piloto(nombre,correo(),"55550000",passwords.encode(PASSWORD)));
     }
     String login(String correo) throws Exception {
         return json.readTree(mvc.perform(post("/api/v1/auth/login").contentType(MediaType.APPLICATION_JSON)
@@ -92,9 +95,11 @@ abstract class WebSocketPruebas {
         stomp.connectAsync("ws://localhost:"+puerto+"/uvgo/api/ws",new WebSocketHttpHeaders(),connect,cliente);
         return cliente;
     }
-    Cliente conectarAdmin(String token) { return conectar(Map.of("Authorization","Bearer "+token)); }
-    Cliente conectarPiloto(UUID id,String clave) { return conectar(Map.of("X-Piloto-Id",id.toString(),"X-Piloto-Clave",clave)); }
-    Cliente conectarPiloto() { return conectarPiloto(OSCAR,CLAVE); }
+    /** Conecta con el JWT en el frame CONNECT; sirve para cualquier rol. */
+    Cliente conectarConToken(String token) { return conectar(Map.of("Authorization","Bearer "+token)); }
+    Cliente conectarAdmin(String token) { return conectarConToken(token); }
+    /** El piloto inicia sesión como cualquier usuario y entra al WebSocket con su token. */
+    Cliente conectarPiloto(Piloto p) throws Exception { return conectarConToken(login(p.getCorreo())); }
 
     /** Se suscribe y entrega los mensajes en un futuro (el primero que llegue). */
     <T> CompletableFuture<T> escuchar(StompSession s,String destino,Class<T> tipo) throws Exception {

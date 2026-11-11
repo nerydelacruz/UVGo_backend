@@ -59,7 +59,7 @@ public class SeguridadConfig {
         return http.csrf(c -> c.disable()).cors(c -> {})
                 .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(a -> a
-                        .requestMatchers(HttpMethod.POST,"/api/v1/auth/registro","/api/v1/auth/login").permitAll()
+                        .requestMatchers(HttpMethod.POST,"/api/v1/auth/registro","/api/v1/auth/registro-piloto","/api/v1/auth/login").permitAll()
                         // El WebSocket se autentica con el JWT del frame CONNECT de STOMP (ver AutenticacionStomp).
                         .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/v3/api-docs/**","/swagger-ui/**","/swagger-ui.html").permitAll()

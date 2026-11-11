@@ -14,6 +14,12 @@ public final class AuthDtos {
             @NotBlank @Pattern(regexp="[0-9]{4,30}") String carne,
             @NotBlank @Size(min=12, max=72) String contrasena,
             @Size(max=120) String carrera) {}
+    /** Registro público de un piloto desde la app móvil: sin carné ni carrera y con cualquier correo. */
+    public record RegistroPiloto(
+            @NotBlank @Size(max=120) String nombre,
+            @NotBlank @Email @Size(max=254) String correo,
+            @NotBlank @Pattern(regexp="[+0-9 ()-]{8,25}") String telefono,
+            @NotBlank @Size(min=12, max=72) String contrasena) {}
     public record Login(@NotBlank @Email @Size(max=254) String correo,
                         @NotBlank @Size(max=72) String contrasena) {}
     public record Contacto(@NotBlank @Pattern(regexp="[+0-9 ()-]{8,25}") String telefono,

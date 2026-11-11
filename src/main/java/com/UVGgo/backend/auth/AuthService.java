@@ -1,6 +1,7 @@
 package com.UVGgo.backend.auth;
 
 import com.UVGgo.backend.api.ApiException;
+import com.UVGgo.backend.piloto.Piloto;
 import com.UVGgo.backend.usuario.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
@@ -31,13 +32,25 @@ public class AuthService {
         this.dummyHash=passwords.encode(UUID.randomUUID().toString());
     }
     public AuthDtos.Perfil registrar(AuthDtos.Registro r) {
-        String correo=normalizar(r.correo());
-        if (!correo.substring(correo.lastIndexOf('@')+1).equals(dominio))
-            throw new ApiException(HttpStatus.BAD_REQUEST, "Se requiere correo del dominio institucional configurado");
-        if (r.contrasena().getBytes(StandardCharsets.UTF_8).length>72)
-            throw new ApiException(HttpStatus.BAD_REQUEST, "La contraseña no puede superar 72 bytes UTF-8");
+        String correo=correoInstitucional(r.correo()); comprobarContrasena(r.contrasena());
         return AuthDtos.Perfil.de(usuarios.saveAndFlush(new Estudiante(r.nombre().strip(), correo,
                 r.telefono(), passwords.encode(r.contrasena()), r.carne(), r.carrera())));
+    }
+    /** Un piloto se registra solo desde la app móvil. A diferencia del estudiante, puede usar cualquier correo. */
+    public AuthDtos.Perfil registrarPiloto(AuthDtos.RegistroPiloto r) {
+        String correo=normalizar(r.correo()); comprobarContrasena(r.contrasena());
+        return AuthDtos.Perfil.de(usuarios.saveAndFlush(new Piloto(r.nombre().strip(), correo,
+                r.telefono(), passwords.encode(r.contrasena()))));
+    }
+    private String correoInstitucional(String valor) {
+        String correo=normalizar(valor);
+        if (!correo.substring(correo.lastIndexOf('@')+1).equals(dominio))
+            throw new ApiException(HttpStatus.BAD_REQUEST, "Se requiere correo del dominio institucional configurado");
+        return correo;
+    }
+    private static void comprobarContrasena(String contrasena) {
+        if (contrasena.getBytes(StandardCharsets.UTF_8).length>72)
+            throw new ApiException(HttpStatus.BAD_REQUEST, "La contraseña no puede superar 72 bytes UTF-8");
     }
     public AuthDtos.Token login(AuthDtos.Login r) {
         if (r.contrasena().getBytes(StandardCharsets.UTF_8).length>72)
@@ -46,6 +59,19 @@ public class AuthService {
         boolean coincide=passwords.matches(r.contrasena(), u==null ? dummyHash : u.getContrasenaHash());
         if (!coincide || u==null || !u.isActivo())
             throw new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        return emitir(u);
+    }
+    /**
+     * Cambia un token vigente por uno nuevo con el plazo completo, sin pedir la contraseña. La app móvil lo llama
+     * antes de que venza para que la sesión no se corte a media entrega. La sesión anterior no se revoca: vence sola
+     * en minutos, y así no fallan las peticiones que iban en camino con el token viejo.
+     */
+    public AuthDtos.Token renovar(Jwt jwt) {
+        Usuario u=usuario(UUID.fromString(jwt.getSubject()));
+        if (!u.isActivo()) throw new ApiException(HttpStatus.UNAUTHORIZED, "Credenciales inválidas");
+        return emitir(u);
+    }
+    private AuthDtos.Token emitir(Usuario u) {
         Instant ahora=Instant.now(), vence=ahora.plus(Duration.ofMinutes(minutos));
         UUID id=UUID.randomUUID();
         sesiones.save(new Sesion(id,u.getId(),vence));

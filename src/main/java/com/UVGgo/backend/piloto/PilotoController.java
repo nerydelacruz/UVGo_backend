@@ -3,6 +3,7 @@ package com.UVGgo.backend.piloto;
 import com.UVGgo.backend.pedido.PedidoDtos;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -14,7 +15,11 @@ import java.util.*;
 @PreAuthorize("hasRole('ADMINISTRADOR')")
 public class PilotoController {
     private final AsignacionService asignaciones;
-    public PilotoController(AsignacionService asignaciones) { this.asignaciones=asignaciones; }
+    private final PilotoService pilotos;
+    public PilotoController(AsignacionService asignaciones,PilotoService pilotos) { this.asignaciones=asignaciones; this.pilotos=pilotos; }
+    /** Crea la cuenta de un piloto; después entra por /auth/login como cualquier usuario. */
+    @PostMapping("/pilotos") @ResponseStatus(HttpStatus.CREATED)
+    public PilotoDtos.Resumen registrar(@Valid @RequestBody PilotoDtos.Alta r) { return pilotos.registrar(r); }
     /** Pilotos que se pueden asignar a un pedido. */
     @GetMapping("/pilotos")
     public List<PilotoDtos.Resumen> disponibles() { return asignaciones.disponibles(); }

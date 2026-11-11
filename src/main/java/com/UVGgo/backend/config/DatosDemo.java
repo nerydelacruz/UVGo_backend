@@ -1,5 +1,6 @@
 package com.UVGgo.backend.config;
 
+import com.UVGgo.backend.piloto.Piloto;
 import com.UVGgo.backend.usuario.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -27,5 +28,7 @@ public class DatosDemo implements CommandLineRunner {
             usuarios.save(new Administrador("Administrador ficticio","admin.demo@uvg.edu.gt","55550000",passwords.encode(password),"DEMO"));
         if (usuarios.findByCorreo("estudiante.demo@uvg.edu.gt").isEmpty())
             usuarios.save(new Estudiante("Estudiante ficticio","estudiante.demo@uvg.edu.gt","55550001",passwords.encode(password),"99999999","Carrera de prueba"));
+        if (usuarios.findByCorreo("piloto.demo@uvg.edu.gt").isEmpty())
+            usuarios.save(new Piloto("Piloto ficticio","piloto.demo@uvg.edu.gt","55550002",passwords.encode(password)));
     }
 }

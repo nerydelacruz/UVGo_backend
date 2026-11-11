@@ -36,7 +36,7 @@ public class Pedido {
     private Long comprobanteTamano;
     private Instant fechaComprobante;
     private Instant fechaPago;
-    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="piloto_id") private Piloto piloto;
+    @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="piloto_usuario_id") private Piloto piloto;
     // Desde cuándo se buscan sus materiales de texto en el catálogo; null si no hay búsqueda en curso
     private Instant busquedaCatalogoDesde;
     @OneToMany(mappedBy="pedido", cascade=CascadeType.ALL, orphanRemoval=true)
