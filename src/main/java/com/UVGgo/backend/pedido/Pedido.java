@@ -39,6 +39,11 @@ public class Pedido {
     @ManyToOne(fetch=FetchType.LAZY) @JoinColumn(name="piloto_usuario_id") private Piloto piloto;
     // Desde cuándo se buscan sus materiales de texto en el catálogo; null si no hay búsqueda en curso
     private Instant busquedaCatalogoDesde;
+    // Solo la suma UbicacionService con un UPDATE directo (PedidoRepository.registrarTramo): así cada posición GPS
+    // no sube la versión del pedido ni la pisa el administrador al guardar otro cambio.
+    @Column(nullable=false, precision=10, scale=3, insertable=false, updatable=false) private BigDecimal kilometros=BigDecimal.ZERO;
+    @Column(nullable=false, insertable=false, updatable=false) private long segundosEnRuta;
+    @Column(precision=6, scale=2, insertable=false, updatable=false) private BigDecimal velocidadMaxima;
     @OneToMany(mappedBy="pedido", cascade=CascadeType.ALL, orphanRemoval=true)
     @OrderColumn(name="posicion") private List<ItemPedido> items=new ArrayList<>();
     protected Pedido() {}
@@ -141,5 +146,8 @@ public class Pedido {
     public Long getComprobanteTamano() { return comprobanteTamano; }
     public Instant getFechaComprobante() { return fechaComprobante; }
     public Instant getFechaPago() { return fechaPago; }
+    public BigDecimal getKilometros() { return kilometros==null ? BigDecimal.ZERO : kilometros; }
+    public long getSegundosEnRuta() { return segundosEnRuta; }
+    public BigDecimal getVelocidadMaxima() { return velocidadMaxima; }
     public List<ItemPedido> getItems() { return Collections.unmodifiableList(items); }
 }

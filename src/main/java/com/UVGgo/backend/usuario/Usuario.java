@@ -32,6 +32,7 @@ public abstract class Usuario {
     public String getContrasenaHash() { return contrasenaHash; }
     public boolean isActivo() { return activo; }
     public boolean isCorreoVerificado() { return correoVerificado; }
+    public Instant getFechaRegistro() { return fechaRegistro; }
     public void actualizarContacto(String telefono, String correoContacto) {
         this.telefono = telefono; this.correoContacto = correoContacto;
     }
