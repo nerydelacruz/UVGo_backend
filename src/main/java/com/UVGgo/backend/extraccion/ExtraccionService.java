@@ -15,6 +15,8 @@ import java.io.IOException;
 import java.util.Base64;
 import java.util.List;
 import java.util.Locale;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -22,6 +24,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 @Service
 public class ExtraccionService {
+    private static final Logger log=LoggerFactory.getLogger(ExtraccionService.class);
     private static final String INSTRUCCIONES = """
             Lista los productos o materiales que pide el documento y la cantidad de cada uno.
             Si no se indica la cantidad usa 1. No inventes productos.
@@ -67,6 +70,7 @@ public class ExtraccionService {
         } catch (RateLimitException e) {
             throw new ApiException(HttpStatus.TOO_MANY_REQUESTS, "Hay demasiados análisis en curso. Intenta en un momento");
         } catch (AnthropicException e) {
+            log.error("Falló la llamada a Claude (modelo {})", modelo, e);
             throw new ApiException(HttpStatus.BAD_GATEWAY, "No se pudo analizar el PDF. Intenta más tarde");
         }
     }
